@@ -2,11 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { ingestFile, queryRAG } from "./api";
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid'; // For unique chat IDs
+import { motion, AnimatePresence } from 'framer-motion';
 
 function App() {
   // --- Global State ---
   const [error, setError] = useState("");
   const chatContainerRef = useRef(null); // Ref for auto-scrolling chat
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [hoveredChatId, setHoveredChatId] = useState(null);
 
   // --- Team Management State ---
   const [teams, setTeams] = useState(() => {
@@ -73,6 +76,20 @@ function App() {
     setActiveChatId(chatId);
     setError("");
     setQueryInput("");
+  };
+
+  const deleteChat = (chatId) => {
+    setChatHistory(prev => {
+      const newHistory = prev.filter(chat => chat.id !== chatId);
+      if (activeChatId === chatId) {
+        if (newHistory.length > 0) {
+          setActiveChatId(newHistory[0].id);
+        } else {
+          setActiveChatId(null);
+        }
+      }
+      return newHistory;
+    });
   };
 
   const addMessageToActiveChat = (sender, text, provenance = []) => {
@@ -176,143 +193,201 @@ function App() {
   }, [chatHistory, activeChatId, teams]);
 
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-200 font-sans">
+    <div className="flex h-screen bg-[#121212] text-[#E0E0E0] font-sans">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-800/50 backdrop-blur-sm flex flex-col p-4 shadow-2xl border-r border-gray-700/50">
-        <div className="flex items-center mb-6">
-          <span className="text-3xl font-bold text-blue-400">🧠</span>
-          <h1 className="text-xl font-semibold ml-3">RAG Assistant</h1>
+      <motion.div
+        initial={false}
+        animate={{ width: isSidebarCollapsed ? '4rem' : '16rem' }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className={`fixed top-0 left-0 h-full bg-[#1E1E1E] backdrop-blur-lg flex flex-col p-4 shadow-2xl z-10`}>
+        <div className="flex flex-col items-start">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="p-2 rounded-md bg-gray-700/50 hover:bg-gray-600/70 transition-colors mb-4">
+            <svg className="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => startNewChat(currentTeam || (teams.length > 0 ? teams[0] : ""))}
+            className={`w-full flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg mb-6 transition-all duration-300 shadow-lg hover:shadow-blue-500/30 ${isSidebarCollapsed ? 'px-2' : ''}`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            {!isSidebarCollapsed && <span>New Chat</span>}
+          </motion.button>
         </div>
 
-        <button
-          onClick={() => startNewChat(currentTeam || (teams.length > 0 ? teams[0] : ""))}
-          className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg mb-6 transition-all duration-300 shadow-lg hover:shadow-blue-500/30"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-          New Chat
-        </button>
-
-        {/* Teams Section */}
-        <div className="mb-4">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Teams</h3>
-          <ul className="space-y-1">
-            {teams.map((t) => (
-              <li key={t}>
-                <button
-                  onClick={() => {
-                    if (activeChatId && activeChat.team === t) return; // No change if already active
-                    const existingChat = chatHistory.find(chat => chat.team === t && chat.messages.length === 0);
-                    if (existingChat) {
-                      setActiveChatId(existingChat.id);
-                    } else {
-                      startNewChat(t);
-                    }
-                  }}
-                  className={`w-full text-left py-1.5 px-3 rounded-md transition-colors duration-200 text-sm ${
-                    currentTeam === t ? "bg-gray-700/80 text-white font-medium" : "hover:bg-gray-700/50 text-gray-300"
-                  }`}
-                >
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              </li>
-            ))}
-          </ul>
-          {showNewTeamInput ? (
-            <div className="mt-2 flex">
-              <input
-                type="text"
-                value={newTeamNameInput}
-                onChange={(e) => setNewTeamNameInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddTeam()}
-                placeholder="New team..."
-                className="flex-grow p-1.5 text-sm rounded-l-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                onClick={handleAddTeam}
-                className="bg-blue-600 hover:bg-blue-500 text-white text-sm px-3 rounded-r-md transition-colors"
-              >
-                Add
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowNewTeamInput(true)}
-              className="w-full text-left py-1.5 px-3 mt-1 text-sm text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-md transition-colors duration-200"
+        {!isSidebarCollapsed && (
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
             >
-              + Add New Team
-            </button>
-          )}
-        </div>
-
-        {/* Recent Chats */}
-        <div className="flex-grow overflow-y-auto custom-scrollbar -mr-2 pr-2">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase mb-2">Recent Chats</h3>
-          <ul className="space-y-1">
-            {chatHistory.filter(chat => chat.messages.length > 0).map((chat) => (
-              <li key={chat.id}>
-                <button
-                  onClick={() => selectChat(chat.id)}
-                  className={`w-full text-left py-1.5 px-3 rounded-md transition-colors duration-200 text-sm truncate ${
-                    activeChatId === chat.id ? "bg-gray-700/80 text-white font-medium" : "hover:bg-gray-700/50 text-gray-300"
-                  }`}
-                >
-                  {chat.title} <span className="text-gray-500 text-xs">({chat.team})</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-gradient-to-br from-gray-900 to-gray-800">
-        {/* Chat Display */}
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          {!activeChatId && (
-            <div className="text-center text-gray-500 mt-20">
-              <p className="text-3xl font-semibold mb-2 text-gray-300">Welcome to RAG Assistant</p>
-              <p className="text-gray-400">Start a new chat or select a team from the sidebar to begin.</p>
-            </div>
-          )}
-
-          {activeChat && activeChat.messages.length === 0 && (
-            <div className="text-center text-gray-500 mt-20">
-              <p className="text-3xl font-semibold mb-2 text-gray-300">Chat with {currentTeam.charAt(0).toUpperCase() + currentTeam.slice(1)}</p>
-              <p className="text-gray-400">Ask a question or upload a document to get started.</p>
-            </div>
-          )}
-
-          {activeChat && activeChat.messages.map((msg, index) => (
-            <div key={index} className={`flex items-start gap-4 animate-fade-in ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-3xl p-4 rounded-xl shadow-lg ${
-                  msg.sender === "user"
-                    ? "bg-gray-700/60 text-gray-200"
-                    : "bg-gray-800/50 text-gray-300 border border-gray-700/50"
-                }`}
-              >
-                <div className="prose prose-invert max-w-none">
-                  <ReactMarkdown>{msg.text}</ReactMarkdown>
-                </div>
-                {msg.provenance && msg.provenance.length > 0 && (
-                  <div className="mt-4 pt-3 border-t border-gray-600/50 text-sm text-gray-400">
-                    <h4 className="font-semibold mb-2 text-gray-300">Sources:</h4>
-                    <ul className="list-disc list-inside space-y-1">
-                      {msg.provenance.map((p, pIdx) => (
-                        <li key={pIdx}>
-                          Source: {p.source_doc} "{p.chunk_text.substring(0, 100)}..."
-                        </li>
-                      ))}
-                    </ul>
+              {/* Teams Section */}
+              <div className="mb-4">
+                <h3 className={`text-xs font-semibold text-gray-400 uppercase mb-2`}>Teams</h3>
+                <ul className="space-y-1">
+                  {teams.map((t) => (
+                    <li key={t}>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          if (activeChatId && activeChat.team === t) return; // No change if already active
+                          const existingChat = chatHistory.find(chat => chat.team === t && chat.messages.length === 0);
+                          if (existingChat) {
+                            setActiveChatId(existingChat.id);
+                          } else {
+                            startNewChat(t);
+                          }
+                        }}
+                        className={`w-full text-left py-1.5 px-3 rounded-md transition-colors duration-200 text-sm ${
+                          currentTeam === t ? "bg-gray-700/80 text-white font-medium" : "hover:bg-gray-700/50 text-gray-300"
+                        }`}
+                      >
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </motion.button>
+                    </li>
+                  ))}
+                </ul>
+                {showNewTeamInput ? (
+                  <div className="mt-2 flex">
+                    <input
+                      type="text"
+                      value={newTeamNameInput}
+                      onChange={(e) => setNewTeamNameInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddTeam()}
+                      placeholder="New team..."
+                      className="flex-grow p-1.5 text-sm rounded-l-md bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleAddTeam}
+                      className="bg-blue-600 hover:bg-blue-500 text-white text-sm px-3 rounded-r-md transition-colors"
+                    >
+                      Add
+                    </motion.button>
                   </div>
+                ) : (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowNewTeamInput(true)}
+                    className={`w-full text-left py-1.5 px-3 mt-1 text-sm text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-md transition-colors duration-200`}
+                  >
+                    + Add New Team
+                  </motion.button>
                 )}
               </div>
-            </div>
-          ))}
+
+              {/* Recent Chats */}
+              <div className="flex-grow overflow-y-auto custom-scrollbar -mr-2 pr-2">
+                <h3 className={`text-xs font-semibold text-gray-400 uppercase mb-2`}>Recent Chats</h3>
+                <ul className="space-y-1">
+                  {chatHistory.filter(chat => chat.messages.length > 0).map((chat) => (
+                    <li key={chat.id} onMouseEnter={() => setHoveredChatId(chat.id)} onMouseLeave={() => setHoveredChatId(null)} className="relative">
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => selectChat(chat.id)}
+                        className={`w-full text-left py-1.5 px-3 rounded-md transition-colors duration-200 text-sm truncate ${
+                          activeChatId === chat.id ? "bg-gray-700/80 text-white font-medium" : "hover:bg-gray-700/50 text-gray-300"
+                        }`}
+                      >
+                        {chat.title} <span className="text-gray-500 text-xs">{`(${chat.team})`}</span>
+                      </motion.button>
+                      {hoveredChatId === chat.id && (
+                        <button onClick={(e) => { e.stopPropagation(); deleteChat(chat.id); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center rounded-full bg-red-500/80 hover:bg-red-500 text-white transition-colors" title="Delete Chat">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </motion.div>
+
+      {/* Main Chat Area */}
+      <motion.div
+        initial={false}
+        animate={{ marginLeft: isSidebarCollapsed ? '4rem' : '16rem' }}
+        transition={{ duration: 0.3, ease: 'easeInOut' }}
+        className={`flex-1 flex flex-col bg-[#121212]`}>
+        <div className="flex items-center p-4">
+          <h1 className="text-xl font-semibold bg-gradient-to-r from-blue-400 to-blue-600 text-transparent bg-clip-text">RAG Assistant</h1>
+        </div>
+        {/* Chat Display */}
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+          <AnimatePresence>
+            {!activeChatId && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="text-center text-gray-500 mt-20">
+                <p className="text-3xl font-semibold mb-2 text-[#E0E0E0]">Welcome to RAG Assistant</p>
+                <p className="text-gray-400">Start a new chat or select a team from the sidebar to begin.</p>
+              </motion.div>
+            )}
+
+            {activeChat && activeChat.messages.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="text-center text-gray-500 mt-20">
+                <p className="text-3xl font-semibold mb-2 text-[#E0E0E0]">Chat with {currentTeam.charAt(0).toUpperCase() + currentTeam.slice(1)}</p>
+                <p className="text-gray-400">Ask a question or upload a document to get started.</p>
+              </motion.div>
+            )}
+
+            {activeChat && activeChat.messages.map((msg, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className={`flex items-start gap-4 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-3xl p-4 rounded-xl shadow-lg ${
+                    msg.sender === "user"
+                      ? "bg-gray-700/60 text-[#E0E0E0]"
+                      : "bg-[#1E1E1E] text-[#E0E0E0] border border-gray-700/50"
+                  }`}
+                >
+                  <div className="prose prose-invert max-w-none">
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  </div>
+                  {msg.provenance && msg.provenance.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-gray-600/50 text-sm text-gray-400">
+                      <h4 className="font-semibold mb-2 text-gray-300">Sources:</h4>
+                      <ul className="list-disc list-inside space-y-1">
+                        {msg.provenance.map((p, pIdx) => (
+                          <li key={pIdx}>
+                            Source: {p.source_doc} "{p.chunk_text.substring(0, 100)}..."
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
           {isQuerying && (
             <div className="flex justify-start">
-              <div className="max-w-3xl p-4 rounded-xl shadow-lg bg-gray-800/50 text-gray-300 border border-gray-700/50">
+              <div className="max-w-3xl p-4 rounded-xl shadow-lg bg-[#1E1E1E] text-[#E0E0E0] border border-gray-700/50">
                 <div className="flex items-center">
                   <div className="gemini-loader mr-3"></div>
                   <span>Thinking...</span>
@@ -344,14 +419,16 @@ function App() {
           </select>
 
           {/* Plus button for file upload */}
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={() => setShowFileUploadModal(true)}
             className="p-2.5 rounded-full bg-gray-700/50 hover:bg-gray-600/70 text-gray-300 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Upload Document"
             disabled={!currentTeam}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-          </button>
+          </motion.button>
 
           <form onSubmit={handleQuerySubmit} className="flex-grow flex items-center relative">
             <input
@@ -359,19 +436,21 @@ function App() {
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder={currentTeam ? `Ask a question about ${currentTeam}...` : "Select a team to ask a question..."}
-              className="flex-grow w-full p-4 pr-16 bg-gray-700/50 text-gray-200 rounded-full border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
+              className="flex-grow w-full p-4 pr-16 bg-[#1E1E1E] text-[#E0E0E0] rounded-full border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-300"
               disabled={isQuerying || !currentTeam}
             />
-            <button
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               type="submit"
               className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-colors duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed"
               disabled={isQuerying || !queryInput.trim() || !currentTeam}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-            </button>
+            </motion.button>
           </form>
         </div>
-      </div>
+      </motion.div>
 
       {/* File Upload Modal */}
       {showFileUploadModal && (
@@ -479,7 +558,7 @@ function App() {
         .prose code { color: #f9fafb; background-color: #374151; padding: 0.2em 0.4em; margin: 0; font-size: 85%; border-radius: 3px; }
         .prose pre { background-color: #1f2937; }
         .prose ul > li::before { background-color: #6b7280; }
-
+ 
       `}</style>
     </div>
   );
