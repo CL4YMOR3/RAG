@@ -1,11 +1,13 @@
 import os
 import argparse
 from pathlib import Path
+import datetime
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from PyPDF2 import PdfReader
+from unstructured.partition.auto import partition
 import docx
 
 # ---------- CONFIG ---------- #
@@ -18,27 +20,17 @@ CHUNK_OVERLAP = 100
 def load_document(file_source: object, source_filename: str) -> Document:
     """Loads a document from a file-like object and returns a Document object."""
     file_extension = Path(source_filename).suffix.lower()
-    metadata = {"source": source_filename}
+    metadata = {
+        "source": source_filename,
+        "ingestion_datetime": datetime.datetime.utcnow().isoformat()
+    }
     text = ""
 
+    # Use unstructured to partition the document from the file-like object
     try:
-        if file_extension == ".pdf":
-            reader = PdfReader(file_source)
-            if not reader.pages:
-                raise ValueError("PDF has no pages or could not be read.")
-            for page in reader.pages:
-                text += page.extract_text() or ""
-        elif file_extension == ".docx":
-            doc = docx.Document(file_source)
-            text = "\n".join([para.text for para in doc.paragraphs])
-        elif file_extension == ".txt":
-            # The file object is in binary mode, so we need to decode it
-            text = file_source.read().decode("utf-8")
-        else:
-            raise ValueError(f"Unsupported file type: {file_extension}")
-
+        elements = partition(file=file_source)
+        text = "\n\n".join([str(el) for el in elements])
         return Document(page_content=text, metadata=metadata)
-
     except Exception as e:
         raise ValueError(f"Failed to load or parse {source_filename}: {e}") from e
 

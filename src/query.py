@@ -36,8 +36,9 @@ def retrieve_relevant_chunks(query, team):
         doc = db.docstore._dict[db.index_to_docstore_id[idx]]
         chunk_info = {
             "chunk_text": doc.page_content,
-            "source_doc": getattr(doc.metadata, "source_filename", "unknown") if doc.metadata else "unknown",
-            "chunk_id": getattr(doc.metadata, "chunk_id", idx)
+            "source_doc": doc.metadata.get("source", "unknown"),
+            "ingestion_datetime": doc.metadata.get("ingestion_datetime", "unknown"),
+            "chunk_id": idx
         }
         retrieved_chunks.append(chunk_info)
 
