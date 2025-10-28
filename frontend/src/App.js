@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ingestFile, queryRAG } from "./api";
+import { ingestFile, queryRAG, deleteSessionMemory } from "./api";
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid'; // For unique chat IDs
 
@@ -10,6 +10,7 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [hoveredChatId, setHoveredChatId] = useState(null);
 
+
   // --- Team Management State ---
   const [teams, setTeams] = useState(() => {
     const savedTeams = localStorage.getItem("rag_teams");
@@ -17,6 +18,7 @@ function App() {
   });
   const [newTeamNameInput, setNewTeamNameInput] = useState("");
   const [showNewTeamInput, setShowNewTeamInput] = useState(false);
+  const [isTeamDropdownOpen, setIsTeamDropdownOpen] = useState(false);
 
   // --- Chat History State ---
   const [chatHistory, setChatHistory] = useState(() => {
@@ -77,7 +79,7 @@ function App() {
     setQueryInput("");
   };
 
-  const deleteChat = (chatId) => {
+  const deleteChat = async (chatId) => {
     setChatHistory(prev => {
       const newHistory = prev.filter(chat => chat.id !== chatId);
       if (activeChatId === chatId) {
@@ -89,6 +91,14 @@ function App() {
       }
       return newHistory;
     });
+
+    // Also clear the memory on the backend
+    try {
+      await deleteSessionMemory(chatId);
+    } catch (err) {
+      console.error("Failed to clear session memory on backend:", err);
+      // Optionally, show a non-blocking error to the user
+    }
   };
 
   const addMessageToActiveChat = (sender, text, provenance = []) => {
@@ -144,7 +154,7 @@ function App() {
     addMessageToActiveChat("user", userQuery);
 
     try {
-      const result = await queryRAG(userQuery, currentTeam);
+      const result = await queryRAG(userQuery, currentTeam, activeChatId);
       addMessageToActiveChat("ai", result.answer, result.provenance || []);
     } catch (err) {
       addMessageToActiveChat("ai", `Error: ${err.message || "Failed to get answer."}`);
@@ -205,10 +215,10 @@ function App() {
 
           <button
             onClick={() => startNewChat(currentTeam || (teams.length > 0 ? teams[0] : ""))}
-            className={`w-full flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-lg mb-6 transition-all duration-300 shadow-lg hover:shadow-blue-500/30 hover:scale-105 active:scale-95 ${isSidebarCollapsed ? 'px-2' : ''}`}
+            className={`w-full flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg mb-6 transition-all duration-300 shadow-lg hover:shadow-blue-500/30 hover:scale-105 active:scale-95 ${isSidebarCollapsed ? 'px-0' : 'px-4'}`}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-            {!isSidebarCollapsed && <span>New Chat</span>}
+            <svg className={`w-5 h-5 ${!isSidebarCollapsed ? 'mr-2' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            {!isSidebarCollapsed && <span className="transition-opacity duration-300">New Chat</span>}
           </button>
         </div>
 
@@ -368,18 +378,41 @@ function App() {
 
         {/* Input Area */}
         <div className="p-4 bg-transparent flex items-center space-x-3">
-          {/* Team Selector for current chat */}
-          <select
-            value={currentTeam}
-            onChange={handleTeamChangeForActiveChat}
-            className="p-2.5 border border-gray-600 rounded-lg text-sm bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-            disabled={!activeChatId || teams.length === 0}
-          >
-            <option value="">Select Team</option>
-            {teams.map(t => (
-              <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
-            ))}
-          </select>
+          {/* Custom Team Selector Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsTeamDropdownOpen(prev => !prev)}
+              disabled={!activeChatId || teams.length === 0}
+              className="flex items-center justify-between w-40 p-2.5 border border-gray-600 rounded-lg text-sm bg-gray-700/50 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="truncate">{currentTeam ? (currentTeam.charAt(0).toUpperCase() + currentTeam.slice(1)) : "Select Team"}</span>
+              <svg className={`w-4 h-4 ml-2 transition-transform duration-200 ${isTeamDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+
+            {isTeamDropdownOpen && (
+              <div className="absolute bottom-full mb-2 w-40 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto custom-scrollbar">
+                <ul className="py-1">
+                  {teams.map(t => (
+                    <li key={t}>
+                      <button
+                        onClick={() => {
+                          handleTeamChangeForActiveChat({ target: { value: t } });
+                          setIsTeamDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm transition-colors duration-150 ${
+                          currentTeam === t
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-300 hover:bg-gray-700'
+                        }`}
+                      >
+                        {t.charAt(0).toUpperCase() + t.slice(1)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
 
           {/* Plus button for file upload */}
           <button

@@ -12,10 +12,15 @@ EMBED_MODEL = "all-MiniLM-L6-v2"
 INDEX_DIR = "indexes"
 TOP_K = 4
 MODEL = "mistral-small-latest"   # you can switch later to mistral-medium or mistral-large
+MEMORY_WINDOW_SIZE = 3 # Number of past exchanges to remember
 # ---------------------------- #
 
 client = Mistral(api_key=MISTRAL_API_KEY)
 embedder = SentenceTransformer(EMBED_MODEL)
+
+# In-memory store for conversational history
+# Format: { "session_id": [ {"user": "...", "assistant": "..."} ] }
+memory_store = {}
 
 def load_index(team):
     """Load the FAISS index for the given team."""
@@ -47,13 +52,25 @@ def retrieve_relevant_chunks(query, team):
     return context_text, retrieved_chunks
 
 
-def generate_answer(query, context):
+def generate_answer(query, context, history=""):
     """Use Mistral to generate an augmented response."""
+    
+    history_prompt_part = ""
+    if history:
+        history_prompt_part = f"""
+Here is the recent conversation history:
+{history}
+"""
+
     prompt = f"""
 You are an AI assistant helping the user with internal company knowledge.
-Use the provided context to answer concisely.
+Use the provided context and conversation history to answer the user's question.
+If the user is asking a follow-up question, use the history to understand the context.
+Answer concisely.
 
-Context:
+{history_prompt_part}
+
+Context from relevant documents:
 {context}
 
 Question: {query}
@@ -69,14 +86,33 @@ Answer:
     msg = response.choices[0].message
     return msg.content.strip()
 
-def rag_query(query, team):
+def rag_query(query, team, session_id=None):
     """Full RAG pipeline with provenance."""
     context_text, provenance = retrieve_relevant_chunks(query, team)
-    answer = generate_answer(query, context_text)
+
+    history_text = ""
+    if session_id and session_id in memory_store:
+        # Get the last few exchanges
+        recent_history = memory_store[session_id][-MEMORY_WINDOW_SIZE:]
+        history_text = "\n".join([f"User: {h['user']}\nAssistant: {h['assistant']}" for h in recent_history])
+
+    answer = generate_answer(query, context_text, history=history_text)
+
+    # Store the new exchange in memory
+    if session_id:
+        if session_id not in memory_store:
+            memory_store[session_id] = []
+        memory_store[session_id].append({"user": query, "assistant": answer})
+
     return {
         "answer": answer,
         "provenance": provenance
     }
+
+def clear_session_memory(session_id: str):
+    """Removes a session's history from the in-memory store."""
+    if session_id in memory_store:
+        del memory_store[session_id]
 
 if __name__ == "__main__":
     import argparse

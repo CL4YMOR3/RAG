@@ -1,75 +1,50 @@
-import axios from "axios";
+const API_BASE_URL = "http://localhost:8000";
 
-const API_BASE = "http://localhost:8000";
-
-/**
- * Uploads and ingests a file for a specific team.
- * @param {File} file The file to be ingested.
- * @param {string} team The team to associate the file with.
- * @returns {Promise<object>} The response from the server.
- */
 export const ingestFile = async (file, team) => {
-  if (!file || !team) {
-    throw new Error("File and team are required for ingestion.");
-  }
-
   const formData = new FormData();
   formData.append("file", file);
   formData.append("team", team);
 
-  try {
-    const response = await axios.post(`${API_BASE}/ingest/`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error during file ingestion:", error);
-    // Try to extract a meaningful error message from the server response
-    if (error.response && error.response.data) {
-      const serverData = error.response.data;
-      const serverMessage =
-        serverData.detail ||
-        serverData.message ||
-        (typeof serverData === 'string' ? serverData : JSON.stringify(serverData));
-      throw new Error(`Server error: ${serverMessage}`);
-    }
-    throw new Error(error.message || "An unknown network error occurred during ingestion.");
+  const response = await fetch(`${API_BASE_URL}/ingest/`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: "An unknown error occurred." }));
+    throw new Error(errorData.message || "Failed to ingest file.");
   }
+  return response.json();
 };
 
-/**
- * Sends a query to the RAG system for a specific team.
- * @param {string} query The user's question.
- * @param {string} team The team to query against.
- * @returns {Promise<object>} The answer and provenance from the RAG system.
- */
-export const queryRAG = async (query, team) => {
-  if (!query || !team) {
-    throw new Error("Query and team are required.");
+export const queryRAG = async (query, team, sessionId) => {
+  const formData = new FormData();
+  formData.append("query", query);
+  formData.append("team", team);
+  if (sessionId) {
+    formData.append("session_id", sessionId);
   }
 
-  try {
-    // The backend seems to expect form-data for this endpoint as well.
-    const formData = new FormData();
-    formData.append("query", query);
-    formData.append("team", team);
+  const response = await fetch(`${API_BASE_URL}/query/`, {
+    method: "POST",
+    body: formData,
+  });
 
-    const response = await axios.post(`${API_BASE}/query/`, formData);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: "An unknown error occurred." }));
+    throw new Error(errorData.message || "Failed to get answer.");
+  }
+  return response.json();
+};
 
-    return response.data;
-  } catch (error) {
-    console.error("Error during query:", error);
-    // Try to extract a meaningful error message from the server response
-    if (error.response && error.response.data) {
-      const serverData = error.response.data;
-      const serverMessage =
-        serverData.detail ||
-        serverData.message ||
-        (typeof serverData === 'string' ? serverData : JSON.stringify(serverData));
-      throw new Error(`Server error: ${serverMessage}`);
+export const deleteSessionMemory = async (sessionId) => {
+    const response = await fetch(`${API_BASE_URL}/session/${sessionId}`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "An unknown error occurred." }));
+        throw new Error(errorData.message || 'Failed to clear session memory.');
     }
-    throw new Error(error.message || "An unknown network error occurred during query.");
-  }
+    return response.json();
 };

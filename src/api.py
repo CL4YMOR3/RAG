@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, Form, Query
 from fastapi.responses import JSONResponse
 from pathlib import Path
-from .query import rag_query
+from .query import rag_query, clear_session_memory
 from .ingest import ingest
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
@@ -40,10 +40,10 @@ async def ingest_file(file: UploadFile, team: str = Form(...)):
 
 
 @app.post("/query/")
-def query_team(query: str = Form(...), team: str = Form(...)):
+def query_team(query: str = Form(...), team: str = Form(...), session_id: str = Form(None)):
     """Query a specific team index and return answer + provenance."""
     try:
-        result = rag_query(query, team)
+        result = rag_query(query, team, session_id)
 
         # Convert any numpy types to native Python equivalents
         def convert(obj):
@@ -58,5 +58,15 @@ def query_team(query: str = Form(...), team: str = Form(...)):
         clean_result = convert(result)
         return clean_result
 
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+@app.delete("/session/{session_id}")
+def delete_session(session_id: str):
+    """Clear the conversational memory for a given session_id."""
+    try:
+        clear_session_memory(session_id)
+        return {"status": "success", "message": f"Memory for session {session_id} cleared."}
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})

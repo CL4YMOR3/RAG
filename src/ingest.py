@@ -6,7 +6,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_community.embeddings import SentenceTransformerEmbeddings
+from io import BytesIO
 from PyPDF2 import PdfReader
+import magic
 from unstructured.partition.auto import partition
 import docx
 
@@ -28,7 +30,12 @@ def load_document(file_source: object, source_filename: str) -> Document:
 
     # Use unstructured to partition the document from the file-like object
     try:
-        elements = partition(file=file_source)
+        # Read the file stream into a BytesIO object to make it seekable for `unstructured`
+        file_content = file_source.read()
+        # Use libmagic to determine the content type
+        mime_type = magic.from_buffer(file_content, mime=True)
+        
+        elements = partition(file=BytesIO(file_content), file_filename=source_filename, content_type=mime_type)
         text = "\n\n".join([str(el) for el in elements])
         return Document(page_content=text, metadata=metadata)
     except Exception as e:

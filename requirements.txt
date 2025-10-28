@@ -13,3 +13,6 @@ chromadb>=0.3
 faiss-cpu>=1.7
 sentence-transformers>=2.2
 transformers>=4.30
+unstructured[local-inference]>=0.12.0
+python-magic-bin>=0.4.27 # For libmagic on Windows
+mistralai>=0.1.2
