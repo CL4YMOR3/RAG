@@ -34,6 +34,25 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+*.manifest
+*.spec
+tmp/
+
+# --- Editor / IDE specific files ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+.project
+.pydevproject
+
+# --- Operating System Files ---
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # --- Test / Coverage Reports ---
 htmlcov/
@@ -42,6 +61,10 @@ htmlcov/
 .coverage.*
 .cache
 .pytest_cache/
+.mypy_cache/
+
+# --- Jupyter Notebook Files ---
+.ipynb_checkpoints/
 
 # --- Project-specific ignores ---
 # Generated FAISS vector indexes
@@ -50,3 +73,4 @@ htmlcov/
 /data/
 # Log files
 *.log
+logs/
