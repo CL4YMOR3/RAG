@@ -1,20 +1,30 @@
-# --- Environments ---
-# Virtual environment folders
-.env
-venv
-backend/env/
-backend/venv/
+# ==========================================================
+# 🔹 ENVIRONMENTS
+# ==========================================================
+# Python virtual environments
+venv/
+env/
 ENV/
+.venv/
+.env/
 env.bak/
 venv.bak/
+backend/venv/
+HO RAG/backend/venv/
 
-# --- Byte-compiled / optimized / DLL files ---
+# ==========================================================
+# 🔹 PYTHON FILES
+# ==========================================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.pyd
+*.dll
 
-# --- Distribution / packaging ---
+# ==========================================================
+# 🔹 BUILD & PACKAGING
+# ==========================================================
 .Python
 build/
 develop-eggs/
@@ -34,43 +44,103 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-*.manifest
-*.spec
-tmp/
 
-# --- Editor / IDE specific files ---
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace
-*.swp
-*.swo
-.project
-.pydevproject
-
-# --- Operating System Files ---
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# --- Test / Coverage Reports ---
+# ==========================================================
+# 🔹 TESTING / COVERAGE
+# ==========================================================
 htmlcov/
 .tox/
+.nox/
 .coverage
 .coverage.*
 .cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
 .pytest_cache/
-.mypy_cache/
 
-# --- Jupyter Notebook Files ---
-.ipynb_checkpoints/
-
-# --- Project-specific ignores ---
-# Generated FAISS vector indexes
-/indexes/
-# Uploaded user data
-/data/
-# Log files
+# ==========================================================
+# 🔹 LOGS / DATABASES / TEMP FILES
+# ==========================================================
 *.log
+*.sqlite3
+*.db
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# ==========================================================
+# 🔹 MACHINE LEARNING / DATA FILES
+# ==========================================================
+# Large datasets, models, checkpoints
+*.h5
+*.hdf5
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.npz
+*.npy
+
+# Vector indexes, embeddings, cache data
+index/
+indexes/
+data/
+datasets/
+cache/
+outputs/
+runs/
+checkpoints/
 logs/
+wandb/
+
+# ==========================================================
+# 🔹 WEB / FRONTEND FILES
+# ==========================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+build/
+dist/
+package-lock.json
+
+# ==========================================================
+# 🔹 FIREBASE / SECRETS
+# ==========================================================
+# Firebase config / service keys
+firebase-debug.log
+serviceAccountKey.json
+*.key.json
+
+# ==========================================================
+# 🔹 SYSTEM & IDE FILES
+# ==========================================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# ==========================================================
+# 🔹 BACKUP / MISC
+# ==========================================================
+*.orig
+*.rej
+*.bak
+*.old
+*.save
+*.zip
+*.tar
+*.gz
+
+# ==========================================================
+# 🔹 ENVIRONMENT VARIABLES FILES
+# ==========================================================
+.env
+.env.local
+.env.*.local
