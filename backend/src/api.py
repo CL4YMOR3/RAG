@@ -1,17 +1,18 @@
 from fastapi import FastAPI, UploadFile, Form, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pathlib import Path
-from .query import rag_query, clear_session_memory
+from .query import rag_query, rag_query_stream, clear_session_memory
 from .ingest import ingest
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
+import json
 import os
 
 app = FastAPI(title="HO RAG System")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://192.168.1.175:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,6 +62,26 @@ def query_team(query: str = Form(...), team: str = Form(...), session_id: str = 
     except Exception as e:
         return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
+@app.post("/query/stream")
+async def query_team_stream(query: str = Form(...), team: str = Form(...), session_id: str = Form(None)):
+    """Query a team index and stream the answer token by token."""
+    try:
+        def stream_generator():
+            # rag_query_stream yields text chunks first, then a dict with provenance
+            for chunk in rag_query_stream(query, team, session_id):
+                if isinstance(chunk, str):
+                    # Yield text chunks directly
+                    yield chunk
+                elif isinstance(chunk, dict) and "provenance" in chunk:
+                    # Special marker to signal the end of the text stream
+                    # and send provenance data as a JSON string.
+                    yield f"\n\n__PROVENANCE_START__\n{json.dumps(chunk)}\n__PROVENANCE_END__"
+
+        return StreamingResponse(stream_generator(), media_type="text/event-stream")
+
+    except Exception as e:
+        # This will likely not be sent if the stream has started, but good for setup errors
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @app.delete("/session/{session_id}")
 def delete_session(session_id: str):

@@ -4,13 +4,11 @@ from pathlib import Path
 import datetime
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_core.documents import Document
-from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_core.documents import Document 
+from langchain_huggingface import HuggingFaceEmbeddings
 from io import BytesIO
-from PyPDF2 import PdfReader
-import magic
+import magic as python_magic
 from unstructured.partition.auto import partition
-import docx
 
 # ---------- CONFIG ---------- #
 EMBED_MODEL = "all-MiniLM-L6-v2"
@@ -33,7 +31,7 @@ def load_document(file_source: object, source_filename: str) -> Document:
         # Read the file stream into a BytesIO object to make it seekable for `unstructured`
         file_content = file_source.read()
         # Use libmagic to determine the content type
-        mime_type = magic.from_buffer(file_content, mime=True)
+        mime_type = python_magic.from_buffer(file_content, mime=True)
         
         elements = partition(file=BytesIO(file_content), file_filename=source_filename, content_type=mime_type)
         text = "\n\n".join([str(el) for el in elements])
@@ -57,7 +55,7 @@ def chunk_documents(documents):
 
 def build_embeddings(chunks, index_path):
     """Create embeddings and store in FAISS index."""
-    embeddings_model = SentenceTransformerEmbeddings(model_name=EMBED_MODEL)
+    embeddings_model = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
     # Save FAISS index
     db = FAISS.from_documents(chunks, embeddings_model)
     db.save_local(index_path)

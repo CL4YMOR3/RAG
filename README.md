@@ -45,8 +45,9 @@ This project implements a Retrieval-Augmented Generation (RAG) system designed t
     ```
     fastapi>=0.95
     uvicorn[standard]>=0.22
-    langchain-core>=0.1.0
-    langchain-community>=0.0.1
+    langchain-core>=0.2.0
+    langchain-community>=0.2.0
+    langchain-huggingface>=0.0.3
     langchain-text-splitters>=0.0.1
     openai>=1.0
     pdfplumber>=0.8

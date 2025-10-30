@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { ingestFile, queryRAG, deleteSessionMemory } from "./api";
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid'; // For unique chat IDs
@@ -59,7 +59,7 @@ function App() {
   }, [activeChat?.messages]);
 
   // --- Chat Management Functions ---
-  const startNewChat = (teamName = "") => {
+  const startNewChat = useCallback((teamName = "") => {
     const newChat = {
       id: uuidv4(),
       title: "New Chat",
@@ -71,7 +71,7 @@ function App() {
     setActiveChatId(newChat.id);
     setError("");
     setQueryInput("");
-  };
+  }, []); // State setters are stable and don't need to be dependencies
 
   const selectChat = (chatId) => {
     setActiveChatId(chatId);
@@ -194,12 +194,12 @@ function App() {
 
   // --- Initial chat setup ---
   useEffect(() => {
-    if (chatHistory.length === 0 && teams.length > 0) {
-      startNewChat(teams[0]); // Start a new chat with the first team if no history
-    } else if (chatHistory.length > 0 && !activeChatId) {
+    if (chatHistory.length === 0 && teams.length > 0 && !activeChatId) {
+      startNewChat(teams[0]); // Depends on the content of `teams`
+    } else if (chatHistory.length > 0 && !activeChatId && chatHistory[0]) {
       setActiveChatId(chatHistory[0].id); // Select the most recent chat if history exists
     }
-  }, [chatHistory, activeChatId, teams]);
+  }, [chatHistory, teams, activeChatId, startNewChat]);
 
   return (
     <div className="flex h-screen bg-[#121212] text-[#E0E0E0] font-sans">
@@ -307,7 +307,7 @@ function App() {
       <div
         className={`flex-1 flex flex-col bg-[#121212] transition-all duration-300 ease-in-out`}
         style={{ marginLeft: isSidebarCollapsed ? '4rem' : '16rem' }}>
-        <div className="flex items-center p-4">
+        <div className="flex items-center p-4" role="heading" aria-level="1">
           <h1 className="text-xl font-semibold bg-gradient-to-r from-blue-400 to-blue-600 text-transparent bg-clip-text">RAG Assistant</h1>
         </div>
         {/* Chat Display */}

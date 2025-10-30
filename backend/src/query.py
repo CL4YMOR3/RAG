@@ -2,7 +2,8 @@ import os
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from sentence_transformers import SentenceTransformer
-from mistralai import Mistral
+from langchain_mistralai.chat_models import ChatMistralAI
+from langchain_huggingface import HuggingFaceEmbeddings
 import numpy as np
 
 # ---------- CONFIG ---------- #
@@ -15,7 +16,7 @@ MODEL = "mistral-small-latest"   # you can switch later to mistral-medium or mis
 MEMORY_WINDOW_SIZE = 3 # Number of past exchanges to remember
 # ---------------------------- #
 
-client = Mistral(api_key=MISTRAL_API_KEY)
+client = ChatMistralAI(model=MODEL, mistral_api_key=MISTRAL_API_KEY)
 embedder = SentenceTransformer(EMBED_MODEL)
 
 # In-memory store for conversational history
@@ -27,7 +28,8 @@ def load_index(team):
     path = os.path.join(INDEX_DIR, f"{team.lower()}_index")
     if not os.path.exists(path):
         raise FileNotFoundError(f"No index found for team '{team}'.")
-    db = FAISS.load_local(path, embeddings=None, allow_dangerous_deserialization=True)
+    embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
+    db = FAISS.load_local(path, embeddings=embeddings, allow_dangerous_deserialization=True)
     return db
 
 def retrieve_relevant_chunks(query, team):
@@ -77,14 +79,12 @@ Question: {query}
 Answer:
     """
 
-    response = client.chat.complete(
-        model=MODEL,
-        messages=[{"role": "user", "content": prompt}]
+    response = client.invoke(
+        [{"role": "user", "content": prompt}]
     )
 
     # Fix: access .content attribute of AssistantMessage
-    msg = response.choices[0].message
-    return msg.content.strip()
+    return response.content.strip()
 
 def rag_query(query, team, session_id=None):
     """Full RAG pipeline with provenance."""
@@ -109,6 +109,36 @@ def rag_query(query, team, session_id=None):
         "provenance": provenance
     }
 
+def rag_query_stream(query, team, session_id=None):
+    """
+    Full RAG pipeline with streaming response.
+    Yields answer chunks and then a final dictionary with provenance.
+    """
+    context_text, provenance = retrieve_relevant_chunks(query, team)
+
+    history_text = ""
+    if session_id and session_id in memory_store:
+        recent_history = memory_store[session_id][-MEMORY_WINDOW_SIZE:]
+        history_text = "\n".join([f"User: {h['user']}\nAssistant: {h['assistant']}" for h in recent_history])
+
+    # Use a generator for the answer stream
+    answer_stream = generate_answer_stream(query, context_text, history=history_text)
+
+    # We need to accumulate the full answer to store it in memory
+    full_answer = ""
+    for chunk in answer_stream:
+        full_answer += chunk
+        yield chunk
+
+    # Store the complete exchange in memory
+    if session_id:
+        if session_id not in memory_store:
+            memory_store[session_id] = []
+        memory_store[session_id].append({"user": query, "assistant": full_answer})
+
+    # After the answer stream is finished, yield the provenance data
+    yield {"provenance": provenance}
+
 def clear_session_memory(session_id: str):
     """Removes a session's history from the in-memory store."""
     if session_id in memory_store:
@@ -124,3 +154,31 @@ if __name__ == "__main__":
     response = rag_query(args.query, args.team)
     print("\n🧠 RAG Response:\n")
     print(response)
+
+def generate_answer_stream(query, context, history=""):
+    """Use Mistral to generate an augmented response as a stream."""
+    
+    history_prompt_part = ""
+    if history:
+        history_prompt_part = f"""
+Here is the recent conversation history:
+{history}
+"""
+
+    prompt = f"""
+You are an AI assistant helping the user with internal company knowledge.
+Use the provided context and conversation history to answer the user's question.
+If the user is asking a follow-up question, use the history to understand the context.
+Answer concisely.
+
+{history_prompt_part}
+
+Context from relevant documents:
+{context}
+
+Question: {query}
+Answer:
+    """
+
+    for chunk in client.stream([{"role": "user", "content": prompt}]):
+        yield chunk.content
