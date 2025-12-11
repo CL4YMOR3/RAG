@@ -1,0 +1,35 @@
+# --- Core Framework ---
+langchain==0.3.0
+langchain-community==0.3.0
+langchain-core==0.3.0
+langchain-huggingface==0.1.0  # For Embedding models
+langchain-qdrant==0.1.4       # Official Qdrant integration
+
+# --- Vector Database & Search ---
+qdrant-client==1.11.1
+fastembed==0.3.4              # CPU-Optimized Sparse Vectors (SPLADE replacement)
+flashrank==0.2.8              # CPU-Optimized Reranker (Ultra-light)
+
+# --- Database & Cache ---
+asyncpg==0.29.0               # Async PostgreSQL driver (for Neon)
+sqlalchemy[asyncio]==2.0.25   # Async SQLAlchemy ORM
+redis==5.0.1                  # Redis client for caching & sessions
+
+# --- LLM Engine (GGUF Support) ---
+# We use llama-cpp-python for efficient local inference
+llama-cpp-python==0.2.90
+
+# --- Backend API ---
+fastapi==0.112.0
+uvicorn==0.30.6
+python-multipart==0.0.9
+
+# --- Document Loaders ---
+pypdf==4.3.1
+docx2txt==0.8
+python-docx==1.1.2
+tiktoken==0.7.0               # For token counting (context safety)
+
+# --- Utilities ---
+python-dotenv==1.0.1
+numpy<2.0.0                   # Pin numpy to avoid compatibility issues

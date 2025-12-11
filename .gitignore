@@ -1,0 +1,189 @@
+# ==========================================================
+# 🔹 ENVIRONMENTS
+# ==========================================================
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+env.bak/
+venv.bak/
+backend/venv/
+HO RAG/backend/venv/
+
+# ==========================================================
+# 🔹 PYTHON FILES
+# ==========================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.dll
+
+# ==========================================================
+# 🔹 BUILD & PACKAGING
+# ==========================================================
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+# lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==========================================================
+# 🔹 TESTING / COVERAGE
+# ==========================================================
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.pytest_cache/
+
+# ==========================================================
+# 🔹 LOGS / DATABASES / TEMP FILES
+# ==========================================================
+*.log
+*.sqlite3
+*.db
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# ==========================================================
+# 🔹 MACHINE LEARNING / DATA FILES
+# ==========================================================
+# Large datasets, models, checkpoints
+*.h5
+*.hdf5
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.npz
+*.npy
+
+# Vector indexes, embeddings, cache data
+index/
+indexes/
+data/
+datasets/
+cache/
+outputs/
+runs/
+checkpoints/
+logs/
+wandb/
+
+# ==========================================================
+# 🔹 WEB / FRONTEND FILES
+# ==========================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+build/
+dist/
+package-lock.json
+
+# ==========================================================
+# 🔹 FIREBASE / SECRETS
+# ==========================================================
+# Firebase config / service keys
+firebase-debug.log
+serviceAccountKey.json
+*.key.json
+
+# ==========================================================
+# 🔹 SYSTEM & IDE FILES
+# ==========================================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# ==========================================================
+# 🔹 BACKUP / MISC
+# ==========================================================
+*.orig
+*.rej
+*.bak
+*.old
+*.save
+*.zip
+*.tar
+*.gz
+
+# ==========================================================
+# 🔹 ENVIRONMENT VARIABLES FILES
+# ==========================================================
+.env
+.env.local
+.env.*.local
+
+# ==========================================================
+# 🔹 SLM / LLM MODELS & CACHE
+# ==========================================================
+# Small Language Models / Large Language Models
+slm/
+SLM/
+llm/
+LLM/
+models/
+*.bin
+*.safetensors
+*.gguf
+*.ggml
+
+# Hugging Face cache
+.cache/huggingface/
+huggingface/
+transformers_cache/
+
+# ==========================================================
+# 🔹 ADDITIONAL UNNECESSARY FILES
+# ==========================================================
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Mypy / Type checking cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ruff / Linting cache
+.ruff_cache/
+
+# Qdrant storage (local development)
+qdrant_storage/
+storage/
+
+# Temporary upload folders
+uploads/
+temp/
+tmp/

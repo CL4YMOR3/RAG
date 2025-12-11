@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Upstream.so Inspired Dark Theme */
+
+    /* Main Background: Dark Purple/Black Gradient logic handles this in App.js via utility classes usually, 
+       but for base fallback we use a very dark violet */
+    --background: 260 60% 3%;
+    /* #0d0118 approx */
+    --foreground: 0 0% 100%;
+
+    --card: 260 40% 10%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 260 40% 8%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Vivid Purple Accent */
+    --primary: 265 83% 57%;
+    /* #7c3aed */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 260 30% 15%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 260 30% 15%;
+    --muted-foreground: 260 10% 65%;
+    /* #A1A1AA */
+
+    --accent: 260 30% 20%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 260 30% 15%;
+    /* #18181b equivalent with purple tint */
+    --input: 260 30% 15%;
+    --ring: 265 83% 57%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar Specific Variables */
+    --sidebar-background: 240 6% 10%;
+    /* #18181b */
+    --sidebar-foreground: 0 0% 63%;
+    /* Light Gray Text */
+    --sidebar-primary: 265 83% 57%;
+    /* Purple Active Item */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 260 30% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 6% 14%;
+    --sidebar-ring: 265 83% 57%;
+  }
+
+  /* Force dark mode styles regardless of system preference if we just use :root, 
+     but keeping .dark for compatibility if toggling is added later. 
+     For now, we map everything in :root to the dark theme as requested by "The entire application must be in dark mode" */
+
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-white;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* Autofill Override */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #18181b inset !important;
+    -webkit-text-fill-color: white !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+}
+
+@layer utilities {
+  .shadow-float {
+    box-shadow: 0 0 40px rgba(124, 58, 237, 0.15);
+    /* Purple glow */
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-pink-500;
+  }
+
+  .text-gradient-animated {
+    background: linear-gradient(90deg,
+        #a855f7,
+        #ec4899,
+        #8b5cf6,
+        #a855f7);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient-shift 3s ease infinite;
+  }
+
+  @keyframes gradient-shift {
+
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+
+  .glass-panel {
+    @apply bg-[#18181b]/80 backdrop-blur-xl border border-white/5;
+  }
+}
