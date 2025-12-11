@@ -197,6 +197,4 @@ response = llm.complete("Your prompt here")
 
 ---
 
-## 📝 License
 
-MIT License
