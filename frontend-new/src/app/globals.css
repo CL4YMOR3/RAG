@@ -1,0 +1,285 @@
+@import "tailwindcss";
+
+/* ============================================
+   NEXUS Design System — Neo-SaaS Dark AI Theme
+   ============================================ */
+
+@theme {
+  /* The Void (Dark Navy → Deep Purple base) */
+  --color-void: #030014;
+  --color-void-purple: #0a0520;
+
+  /* Sidebar (Dark Charcoal with Purple Tint) */
+  --color-surface: #0d0a1a;
+  --color-surface-elevated: #1a1525;
+
+  /* Frosted Glass Surfaces */
+  --color-glass: rgba(20, 15, 40, 0.6);
+  --color-glass-light: rgba(30, 25, 50, 0.5);
+
+  /* Subtle Borders */
+  --color-white-10: rgba(255, 255, 255, 0.08);
+  --color-white-5: rgba(255, 255, 255, 0.04);
+  --color-purple-border: rgba(168, 85, 247, 0.3);
+
+  /* Primary Accent (Bright Purple) */
+  --color-brand-primary: #A855F7;
+  --color-brand-secondary: #C084FC;
+  --color-brand-pink: #F472B6;
+  --color-brand-glow: rgba(168, 85, 247, 0.4);
+  --color-brand-subtle: rgba(168, 85, 247, 0.15);
+
+  /* Status Colors */
+  --color-status-green: #22C55E;
+
+  /* Typography */
+  --color-txt-primary: #F4F4F5;
+  --color-txt-secondary: #A1A1AA;
+  --color-txt-tertiary: #71717A;
+
+  /* Font */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  /* Custom Animations */
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================
+   Base Styles with Gradient Background
+   ============================================ */
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 50, 200, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 40% at 80% 50%, rgba(100, 40, 180, 0.1) 0%, transparent 40%),
+      radial-gradient(ellipse 50% 30% at 20% 80%, rgba(140, 60, 220, 0.08) 0%, transparent 35%),
+      linear-gradient(180deg, #030014 0%, #0a0520 50%, #050218 100%);
+    background-attachment: fixed;
+    color: var(--color-txt-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-primary);
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================
+   Custom Scrollbar
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.5);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.3) transparent;
+}
+
+/* ============================================
+   Animated Gradient Text (Header)
+   ============================================ */
+
+@keyframes gradient-shift {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animated-gradient-text {
+  background: linear-gradient(90deg,
+      #A855F7,
+      #C084FC,
+      #F472B6,
+      #E879F9,
+      #C084FC,
+      #A855F7);
+  background-size: 300% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 5s ease-in-out infinite;
+}
+
+/* ============================================
+   Glassmorphism Suggestion Chips
+   ============================================ */
+
+.suggestion-chip {
+  background: rgba(20, 15, 40, 0.5);
+  border: 1px solid var(--color-purple-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--color-txt-secondary);
+  padding: 0.625rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  transition: all 0.25s ease;
+  cursor: pointer;
+  position: relative;
+  z-index: 10;
+}
+
+.suggestion-chip:hover {
+  border-color: var(--color-brand-primary);
+  color: var(--color-txt-primary);
+  background: rgba(168, 85, 247, 0.2);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+}
+
+.suggestion-chip:active {
+  transform: scale(0.98);
+}
+
+/* ============================================
+   Frosted Glass Assistant Bubble
+   ============================================ */
+
+.assistant-bubble {
+  background: rgba(30, 25, 55, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   Neon Input Bar Glow
+   ============================================ */
+
+.input-bar {
+  background: rgba(15, 12, 30, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.4),
+    0 0 40px rgba(168, 85, 247, 0.1);
+  transition: all 0.3s ease;
+}
+
+.input-bar:focus-within {
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow:
+    0 4px 30px rgba(0, 0, 0, 0.4),
+    0 0 60px rgba(168, 85, 247, 0.25),
+    0 0 100px rgba(168, 85, 247, 0.1);
+}
+
+/* ============================================
+   Send Button with Gradient Glow
+   ============================================ */
+
+.send-button {
+  background: linear-gradient(135deg, #A855F7 0%, #9333EA 100%);
+  box-shadow:
+    0 4px 15px rgba(168, 85, 247, 0.4),
+    0 0 30px rgba(168, 85, 247, 0.2);
+  transition: all 0.2s ease;
+}
+
+.send-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #C084FC 0%, #A855F7 100%);
+  box-shadow:
+    0 4px 20px rgba(168, 85, 247, 0.5),
+    0 0 40px rgba(168, 85, 247, 0.3);
+  transform: scale(1.05);
+}
+
+.send-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.send-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   Debug Panel (Dark Translucent)
+   ============================================ */
+
+.debug-panel {
+  background: rgba(10, 8, 20, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================
+   Active Sidebar Item
+   ============================================ */
+
+.sidebar-item-active {
+  background: linear-gradient(135deg, #A855F7 0%, #9333EA 100%);
+  color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 10px rgba(168, 85, 247, 0.3);
+}
+
+/* ============================================
+   Typography Plugin Extensions
+   ============================================ */
+
+.prose {
+  --tw-prose-body: var(--color-txt-primary);
+  --tw-prose-headings: #ffffff;
+  --tw-prose-links: var(--color-brand-primary);
+  --tw-prose-bold: var(--color-brand-secondary);
+  --tw-prose-code: var(--color-brand-secondary);
+  --tw-prose-pre-bg: rgba(10, 8, 20, 0.8);
+}
+
+.prose pre {
+  background: rgba(10, 8, 20, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.prose code {
+  background-color: rgba(168, 85, 247, 0.1);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+}
+
+.prose code::before,
+.prose code::after {
+  content: none;
+}
+
+.prose a:hover {
+  text-decoration: underline;
+}

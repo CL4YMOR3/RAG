@@ -181,6 +181,7 @@ dmypy.json
 
 # Qdrant storage (local development)
 qdrant_storage/
+qdrant_data/
 storage/
 
 # Temporary upload folders

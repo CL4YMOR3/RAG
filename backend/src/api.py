@@ -130,7 +130,7 @@ def classify_and_respond_to_error(e: Exception, context: str = "operation"):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://192.168.1.175:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://192.168.1.175:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

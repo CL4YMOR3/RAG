@@ -1,0 +1,17 @@
+============================================================
+RAGAS EVALUATION REPORT
+============================================================
+
+Team: Engineering
+Questions Evaluated: 10
+
+------------------------------------------------------------
+METRICS
+------------------------------------------------------------
+Faithfulness:       N/A (evaluation failed)
+
+Answer Relevancy:   N/A (evaluation failed)
+
+Error: 'EvaluationResult' object has no attribute 'get'
+
+============================================================
