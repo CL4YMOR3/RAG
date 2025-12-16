@@ -188,3 +188,10 @@ storage/
 uploads/
 temp/
 tmp/
+
+# ==========================================================
+# 🔹 RAGAS EVALUATION OUTPUT
+# ==========================================================
+# Evaluation results (regenerated on each run)
+*_results.json
+ragas_report.txt
