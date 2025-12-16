@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 class HybridConfig:
     """Configuration for hybrid ingestion pipeline."""
     # Dense Embeddings (Semantic Search)
-    dense_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    dense_model: str = "BAAI/bge-small-en-v1.5"
     dense_dimension: int = 384
     
     # Sparse Embeddings (Keyword Search) - Using Qdrant's optimized pruned SPLADE

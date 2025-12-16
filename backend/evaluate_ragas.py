@@ -6,6 +6,8 @@ Measures RAG pipeline quality with two key metrics:
 - Faithfulness: Did the AI hallucinate info not in the documents?
 - Answer Relevancy: Did it actually answer the user's question?
 
+Uses Mistral AI API for stable evaluation (avoids local LLM VRAM issues).
+
 Usage:
     python evaluate_ragas.py --team Finance
     python evaluate_ragas.py --team Engineering --eval-file custom_dataset.json
@@ -17,6 +19,7 @@ import argparse
 import json
 import logging
 import sys
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
@@ -30,56 +33,21 @@ from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from datasets import Dataset
 
-from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import BaseMessage, AIMessage
-from langchain_core.outputs import ChatResult, ChatGeneration
+from langchain_mistralai import ChatMistralAI
 from langchain_huggingface import HuggingFaceEmbeddings
 
 from src.services.query import get_query_service
-from src.services.llm import LLMService
-from src.core.config import get_settings
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-
 # =============================================================================
-# LOCAL LLM WRAPPER FOR RAGAS
+# MISTRAL AI CONFIGURATION
 # =============================================================================
 
-class LocalLLMForRAGAS(BaseChatModel):
-    """
-    Wraps our local Qwen LLM to work with RAGAS via LangChain interface.
-    """
-    
-    def _generate(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, run_manager: Any = None, **kwargs) -> ChatResult:
-        llm = LLMService.get_llm()
-        
-        # Convert messages to prompt
-        prompt = ""
-        for msg in messages:
-            role = msg.type if hasattr(msg, 'type') else "user"
-            if role == "human":
-                role = "user"
-            elif role == "ai":
-                role = "assistant"
-            prompt += f"<|im_start|>{role}\n{msg.content}<|im_end|>\n"
-        prompt += "<|im_start|>assistant\n"
-        
-        # Generate response
-        response = llm.complete(prompt)
-        
-        return ChatResult(
-            generations=[ChatGeneration(message=AIMessage(content=response.text))]
-        )
-    
-    @property
-    def _llm_type(self) -> str:
-        return "local-qwen"
-    
-    @property
-    def _identifying_params(self) -> Dict[str, Any]:
-        return {"model": "Qwen2.5-3B-Instruct"}
+# Mistral API Key for RAGAS evaluation
+# Your RAG still uses the local SLM; Mistral is only used to *judge* quality
+MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY", "PmDkL3NvP3gmhBkZGfKvvHr0nZNG6AKx")
 
 
 # =============================================================================
@@ -87,46 +55,46 @@ class LocalLLMForRAGAS(BaseChatModel):
 # =============================================================================
 
 SAMPLE_EVAL_DATASET = [
-    # Technical/Engineering questions
+    # JWTL IT Security Audit specific questions
     {
-        "question": "What are the coding standards mentioned in the documents?",
-        "ground_truth": "The documents describe coding standards and best practices."
+        "question": "What are the critical items mentioned in the security audit?",
+        "ground_truth": "Critical items include establishing critical alerting for mission-critical events and security training for staff."
     },
     {
-        "question": "What is the deployment process?",
-        "ground_truth": "The deployment process involves specific steps and procedures."
+        "question": "What is the recommendation for critical alerting?",
+        "ground_truth": "Define and configure alerts for mission-critical events such as 50+ failed login attempts in 5 minutes, EDR detection on a server, and Firewall HA failure."
     },
     {
-        "question": "What technologies or frameworks are used in the project?",
-        "ground_truth": "The project uses various technologies and frameworks."
+        "question": "What is the log retention policy recommendation?",
+        "ground_truth": "Log retention should be 90 days local storage on the SIEM and 1 year archived to low-cost cloud storage."
     },
     {
-        "question": "What are the testing requirements?",
-        "ground_truth": "Testing requirements include unit tests and integration tests."
+        "question": "What is the status of security training?",
+        "ground_truth": "Security training status is None. Staff are untrained on identifying phishing, malware, or safe handling of company data."
     },
     {
-        "question": "How is version control managed?",
-        "ground_truth": "Version control is managed through a defined process."
+        "question": "What are the Windows Server log recommendations?",
+        "ground_truth": "Windows Server logs, especially Security logs, should be configured with sufficient maximum size to prevent rapid overwriting before forwarding to SIEM."
     },
     {
-        "question": "What are the API specifications?",
-        "ground_truth": "API specifications define endpoints and data formats."
+        "question": "What is the phishing reporting status?",
+        "ground_truth": "Phishing reporting status is None - there is no mechanism for staff to report phishing attempts."
     },
     {
-        "question": "What security practices are documented?",
-        "ground_truth": "Security practices include authentication and data protection."
+        "question": "What are the escalation matrix recommendations?",
+        "ground_truth": "Create an escalation matrix to define who is notified for different severity levels of security events."
     },
     {
-        "question": "What is the architecture overview?",
-        "ground_truth": "The architecture consists of various components and layers."
+        "question": "What mission-critical events should trigger alerts?",
+        "ground_truth": "50+ failed login attempts in 5 minutes, EDR detection on a server, and Firewall HA failure should trigger immediate alerts."
     },
     {
-        "question": "What are the performance requirements?",
-        "ground_truth": "Performance requirements specify response times and throughput."
+        "question": "Why is security training considered critical?",
+        "ground_truth": "Staff are untrained on identifying phishing, malware, or safe handling of company data, making them the weakest security link."
     },
     {
-        "question": "How is error handling implemented?",
-        "ground_truth": "Error handling follows specific patterns and practices."
+        "question": "What is the impact of lacking security training?",
+        "ground_truth": "Without security training, staff become the weakest security link as they cannot identify phishing or malware threats."
     }
 ]
 
@@ -151,20 +119,32 @@ class RAGASEvaluator:
     Evaluates RAG pipeline using RAGAS metrics:
     - Faithfulness: Detects hallucinations (info not in context)
     - Answer Relevancy: Measures if answer addresses the question
+    
+    Uses Mistral AI API for evaluation (stable, no VRAM issues).
+    Your RAG responses are still generated by your local SLM.
     """
     
     def __init__(self, team: str):
         self.team = team
         self.query_service = get_query_service()
-        self.settings = get_settings()
         
-        # Setup RAGAS LLM and embeddings
-        self.llm = LangchainLLMWrapper(LocalLLMForRAGAS())
+        # Setup RAGAS LLM using Mistral AI API
+        logger.info("🔗 Connecting to Mistral AI API for evaluation...")
+        mistral_llm = ChatMistralAI(
+            model="mistral-large-latest",
+            api_key=MISTRAL_API_KEY,
+            temperature=0.0,  # Deterministic for evaluation
+        )
+        self.llm = LangchainLLMWrapper(mistral_llm)
+        
+        # Embeddings (still local - fast and free)
         self.embeddings = LangchainEmbeddingsWrapper(
             HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         )
         
         logger.info(f"📊 RAGAS Evaluator initialized for team: {team}")
+        logger.info("   → Evaluation LLM: Mistral AI (mistral-large-latest)")
+        logger.info("   → RAG responses: Your local SLM")
     
     async def run_query(self, question: str) -> Dict[str, Any]:
         """Run a query through the RAG pipeline."""
@@ -227,7 +207,8 @@ class RAGASEvaluator:
             "reference": ground_truths
         })
         
-        logger.info("📈 Computing RAGAS metrics (Faithfulness & Answer Relevancy)...")
+        logger.info("📈 Computing RAGAS metrics using Mistral AI...")
+        logger.info("   (This uses API calls - may take 1-2 minutes)")
         
         # Run RAGAS evaluation
         try:
@@ -238,23 +219,18 @@ class RAGASEvaluator:
                 llm=self.llm,
                 embeddings=self.embeddings,
             )
-            logger.info(f"✅ RAGAS evaluate() returned: {type(results)}")
-            logger.info(f"   Results object: {results}")
+            logger.info(f"✅ RAGAS evaluate() completed!")
             
-            # Extract scores - RAGAS 0.4.1 returns EvaluationResult object
-            # Convert to pandas dataframe and get mean scores
+            # Extract scores
             try:
                 df = results.to_pandas()
-                logger.info(f"📊 Pandas DataFrame columns: {list(df.columns)}")
-                logger.info(f"   DataFrame shape: {df.shape}")
+                logger.info(f"📊 Results DataFrame columns: {list(df.columns)}")
                 faithfulness_score = df["faithfulness"].mean() if "faithfulness" in df.columns else 0.0
                 relevancy_score = df["answer_relevancy"].mean() if "answer_relevancy" in df.columns else 0.0
-                logger.info(f"   Faithfulness mean: {faithfulness_score}, Relevancy mean: {relevancy_score}")
+                logger.info(f"   Faithfulness: {faithfulness_score:.3f}")
+                logger.info(f"   Answer Relevancy: {relevancy_score:.3f}")
             except Exception as extract_err:
                 logger.warning(f"Could not extract from pandas: {extract_err}")
-                import traceback
-                traceback.print_exc()
-                # Fallback: try direct attribute access
                 faithfulness_score = getattr(results, 'faithfulness', 0.0)
                 relevancy_score = getattr(results, 'answer_relevancy', 0.0)
             
@@ -265,6 +241,7 @@ class RAGASEvaluator:
                 },
                 "num_questions": len(questions),
                 "team": self.team,
+                "evaluator": "Mistral AI (mistral-large-latest)",
                 "details": [
                     {
                         "question": q,
@@ -296,6 +273,7 @@ def generate_report(results: Dict[str, Any]) -> str:
         "=" * 60,
         "",
         f"Team: {results.get('team', 'Unknown')}",
+        f"Evaluator: {results.get('evaluator', 'Local LLM')}",
         f"Questions Evaluated: {results.get('num_questions', 0)}",
         "",
         "-" * 60,
@@ -308,7 +286,7 @@ def generate_report(results: Dict[str, Any]) -> str:
     faithfulness_score = metrics.get("faithfulness")
     relevancy_score = metrics.get("answer_relevancy")
     
-    if faithfulness_score is not None:
+    if faithfulness_score is not None and not (isinstance(faithfulness_score, float) and faithfulness_score != faithfulness_score):
         lines.append(f"Faithfulness:       {faithfulness_score:.3f}")
         lines.append("  → Measures if answers only contain info from documents")
         lines.append("  → Higher = less hallucination")
@@ -317,7 +295,7 @@ def generate_report(results: Dict[str, Any]) -> str:
     
     lines.append("")
     
-    if relevancy_score is not None:
+    if relevancy_score is not None and not (isinstance(relevancy_score, float) and relevancy_score != relevancy_score):
         lines.append(f"Answer Relevancy:   {relevancy_score:.3f}")
         lines.append("  → Measures if answers address the user's question")
         lines.append("  → Higher = more relevant answers")
@@ -333,7 +311,7 @@ def generate_report(results: Dict[str, Any]) -> str:
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="RAGAS Evaluation for HO RAG")
+    parser = argparse.ArgumentParser(description="RAGAS Evaluation for HO RAG (using Mistral AI)")
     parser.add_argument("--team", type=str, default="engineering", help="Team collection to evaluate")
     parser.add_argument("--eval-file", type=str, help="Custom evaluation dataset JSON file")
     parser.add_argument("--output", type=str, help="Save results to JSON file")

@@ -42,6 +42,7 @@ from src.core.config import get_settings
 from src.services.llm import LLMService  # <--- NEW GPU BRIDGE
 from src.services.ingestion import get_ingestion_service
 from src.services.router import SemanticRouter
+from src.services.guardrails import PromptGuardrails, validate_input
 from src.db.redis_cache import get_session_store
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ logger = logging.getLogger(__name__)
 class HybridQueryConfig:
     """Configuration for hybrid query pipeline."""
     # Dense Embeddings
-    dense_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    dense_model: str = "BAAI/bge-small-en-v1.5"
     
     # Sparse Embeddings - Using Qdrant's optimized model
     sparse_model: str = "Qdrant/bm42-all-minilm-l6-v2-attentions"
@@ -96,13 +97,18 @@ Question: {question}
 
 Hypothetical Answer:"""
 
-CITATION_SYSTEM_PROMPT = """You are a precise technical assistant.
-Answer the user's question using ONLY the Context provided below.
+CITATION_SYSTEM_PROMPT = """You are NEXUS, a precise document assistant. Answer questions using ONLY the Context below.
 
-CITATION RULES:
-- You MUST cite your source for every fact using the format: [Source: filename.pdf].
-- If the Context mentions "Page 5", include it: [Source: filename.pdf, Pg 5].
-- Do not combine citations at the end. Place them immediately after the sentence.
+CRITICAL RULES:
+1. Answer the question directly in your first sentence.
+2. Use ONLY information that appears in the Context. Never add outside knowledge.
+3. When possible, QUOTE exact text from the documents.
+4. Cite every claim: [Source: filename]
+5. If you cannot find the answer in the Context, say: "This information is not in the provided documents."
+
+FORBIDDEN:
+- Do NOT infer, assume, or expand beyond what the documents say.
+- Do NOT add helpful context from your training data.
 
 Context:
 {context}"""
@@ -445,7 +451,30 @@ class HybridQueryService:
             messages.append(ChatMessage(role=MessageRole.USER, content=query))
         
         response = self.llm.chat(messages)
-        return str(response.message.content).strip()              
+        return str(response.message.content).strip()
+    
+    async def _generate_chitchat_stream(self, query: str, session_id: str):
+        """Stream response for general chat (non-RAG queries)."""
+        history = await self.memory_store.format_history(session_id)
+        
+        system_prompt = self.settings.CHITCHAT_SYSTEM_PROMPT
+        
+        messages = [
+            ChatMessage(role=MessageRole.SYSTEM, content=system_prompt),
+        ]
+        
+        # Add history context if available
+        if history != "No previous conversation.":
+            messages.append(ChatMessage(
+                role=MessageRole.USER, 
+                content=f"Previous conversation:\n{history}\n\nCurrent message: {query}"
+            ))
+        else:
+            messages.append(ChatMessage(role=MessageRole.USER, content=query))
+        
+        response = self.llm.stream_chat(messages)
+        for token in response:
+            yield token.delta              
     
     # =========================================================================
     # MAIN QUERY METHOD
@@ -499,14 +528,38 @@ class HybridQueryService:
         """
         logger.info(f"🎯 Stream Query: '{query}' | Team: {team} | Session: {session_id}")
         
+        # =================================================================
+        # GUARDRAILS - Input Validation
+        # =================================================================
+        is_safe, sanitized_query, error_reason = validate_input(query)
+        if not is_safe:
+            logger.warning(f"🛡️ Guardrails blocked: {error_reason}")
+            yield error_reason
+            yield f"\n\n__PROVENANCE_START__\n{json.dumps({'provenance': []})}\n__PROVENANCE_END__"
+            return
+        
+        # Check for identity questions (consistent responses)
+        identity_response = PromptGuardrails.get_identity_response(sanitized_query)
+        if identity_response:
+            yield identity_response
+            await self.memory_store.add_message(session_id, "user", query)
+            await self.memory_store.add_message(session_id, "assistant", identity_response)
+            yield f"\n\n__PROVENANCE_START__\n{json.dumps({'provenance': []})}\n__PROVENANCE_END__"
+            return
+        
+        # Use sanitized query from here
+        query = sanitized_query
+        
         route = await self.router.route(query)
         logger.info(f"📍 Route: {route}")
         
         if route == "chat":
-            answer = await self._generate_chitchat_response(query, session_id)
-            yield answer
+            full_response = ""
+            async for token in self._generate_chitchat_stream(query, session_id):
+                full_response += token
+                yield token
             await self.memory_store.add_message(session_id, "user", query)
-            await self.memory_store.add_message(session_id, "assistant", answer)
+            await self.memory_store.add_message(session_id, "assistant", full_response)
             yield f"\n\n__PROVENANCE_START__\n{json.dumps({'provenance': []})}\n__PROVENANCE_END__"
             return
         

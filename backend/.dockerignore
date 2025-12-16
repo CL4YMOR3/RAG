@@ -1,0 +1,38 @@
+# =============================================================================
+# Backend Docker Ignore
+# =============================================================================
+
+# Virtual environment
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Development files
+.env
+.env.local
+*.log
+
+# Data (mounted as volumes)
+qdrant_data/
+data/
+indexes/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose*.yml

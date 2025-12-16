@@ -1,0 +1,34 @@
+# =============================================================================
+# Frontend Docker Ignore
+# =============================================================================
+
+# Dependencies
+node_modules/
+
+# Build output (rebuilt in container)
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.log
+npm-debug.log*
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile

@@ -16,13 +16,16 @@ import {
   Trash2,
   X,
   Paperclip,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import remarkGfm from 'remark-gfm';
-import { useChatStream } from '@/hooks/useChatStream';
+import { useChatManager } from '@/hooks/useChatManager';
 import { cn } from '@/lib/utils';
 import type { Message, Citation } from '@/types';
-import { APP_NAME, TEAMS as DEFAULT_TEAMS, SAMPLE_QUESTIONS, Team } from '@/lib/constants';
+import { APP_NAME, TEAMS as DEFAULT_TEAMS, SAMPLE_QUESTIONS, Team, API_BASE_URL } from '@/lib/constants';
 import { MessageSkeleton } from '@/components/Skeleton';
 
 // Lazy load ReactMarkdown (heavy dependency ~50KB)
@@ -41,14 +44,17 @@ export default function Home() {
   const [input, setInput] = useState('');
   const [isAddTeamModalOpen, setIsAddTeamModalOpen] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
-  const [chatHistory, setChatHistory] = useState<string[]>([
-    'New Chat',
-    'hi',
-    'how much is our profit?',
-    'how much is our profit',
-    'what is our revenue',
-  ]);
-  const { messages, sendMessage, isLoading, clearMessages } = useChatStream(selectedTeam.id);
+  // Use chat manager for real session management
+  const {
+    currentSession,
+    messages,
+    isLoading,
+    sendMessage,
+    createNewChat,
+    selectChat,
+    deleteChat,
+    sessions
+  } = useChatManager(selectedTeam.id);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -66,12 +72,12 @@ export default function Home() {
   };
 
   const handleNewChat = () => {
-    clearMessages();
+    createNewChat();
   };
 
   const handleTeamSelect = (team: Team) => {
     setSelectedTeam(team);
-    clearMessages();
+    createNewChat(); // Create new chat for new team
   };
 
   const handleSuggestionClick = (question: string) => {
@@ -95,20 +101,53 @@ export default function Home() {
     setTeams(filtered);
     if (selectedTeam.id === teamId) {
       setSelectedTeam(filtered[0]);
-      clearMessages();
+      createNewChat();
     }
   };
 
-  const handleDeleteHistory = (idx: number) => {
-    setChatHistory(chatHistory.filter((_, i) => i !== idx));
+  const handleDeleteHistory = async (sessionId: string) => {
+    await deleteChat(sessionId);
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedFiles([...selectedFiles, ...Array.from(e.target.files)]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const files = Array.from(e.target.files);
+    setSelectedFiles(files);
+    setIsUploading(true);
+    setUploadStatus(null);
+
+    try {
+      // Upload each file to the backend
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('team', selectedTeam.id);
+        formData.append('chunking_strategy', 'window');
+
+        const response = await fetch(`${API_BASE_URL}/ingest/`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          throw new Error(error.message || `Failed to upload ${file.name}`);
+        }
+      }
+
+      setUploadStatus({ type: 'success', message: `Successfully ingested ${files.length} file(s) to ${selectedTeam.name}` });
+      setSelectedFiles([]);
+    } catch (error) {
+      setUploadStatus({ type: 'error', message: error instanceof Error ? error.message : 'Upload failed' });
+    } finally {
+      setIsUploading(false);
+      // Reset input so same file can be selected again
+      e.target.value = '';
     }
-    // Reset input so same file can be selected again
-    e.target.value = '';
   };
 
   const handleRemoveFile = (idx: number) => {
@@ -210,26 +249,34 @@ export default function Home() {
             </span>
           </div>
           <div className="space-y-0.5 mt-1">
-            {chatHistory.map((item, idx) => (
+            {sessions.map((session) => (
               <div
-                key={idx}
-                className="group flex items-center text-sm text-txt-secondary hover:bg-white/5 hover:text-txt-primary transition-all rounded-lg"
+                key={session.id}
+                className={cn(
+                  "group flex items-center text-sm transition-all rounded-lg",
+                  currentSession?.id === session.id
+                    ? "bg-brand-primary/10 text-brand-primary"
+                    : "text-txt-secondary hover:bg-white/5 hover:text-txt-primary"
+                )}
               >
                 <button
                   type="button"
+                  onClick={() => selectChat(session.id)}
                   className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left cursor-pointer"
                 >
                   <Clock className="w-4 h-4 text-txt-tertiary shrink-0" />
-                  <span className="truncate">{item}</span>
+                  <span className="truncate">{session.title}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteHistory(idx)}
-                  className="p-1.5 mr-1 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-400 rounded transition-all cursor-pointer"
-                  aria-label="Delete history item"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                {sessions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteHistory(session.id)}
+                    className="p-1.5 mr-1 opacity-0 group-hover:opacity-100 hover:bg-red-500/20 hover:text-red-400 rounded transition-all cursor-pointer"
+                    aria-label="Delete chat"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -353,19 +400,58 @@ export default function Home() {
                     key={idx}
                     className="flex items-center gap-2 bg-glass px-3 py-1.5 rounded-full text-xs text-txt-secondary border border-white-5"
                   >
-                    <Paperclip className="w-3 h-3" />
+                    {isUploading ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Paperclip className="w-3 h-3" />
+                    )}
                     <span className="max-w-[120px] truncate">{file.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveFile(idx)}
-                      className="hover:text-red-400 transition-colors cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    {!isUploading && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(idx)}
+                        className="hover:text-red-400 transition-colors cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 ))}
+                {isUploading && (
+                  <span className="text-xs text-txt-tertiary">Uploading...</span>
+                )}
               </div>
             )}
+
+            {/* Upload Status Message */}
+            <AnimatePresence>
+              {uploadStatus && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className={cn(
+                    "flex items-center gap-2 mt-3 px-4 py-2 rounded-lg text-sm",
+                    uploadStatus.type === 'success'
+                      ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                      : "bg-red-500/10 text-red-400 border border-red-500/20"
+                  )}
+                >
+                  {uploadStatus.type === 'success' ? (
+                    <CheckCircle className="w-4 h-4" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4" />
+                  )}
+                  <span>{uploadStatus.message}</span>
+                  <button
+                    onClick={() => setUploadStatus(null)}
+                    className="ml-auto hover:opacity-70 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="text-center text-[11px] text-txt-tertiary mt-3 font-medium">
               AI-generated content may be inaccurate

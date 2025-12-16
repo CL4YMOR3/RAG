@@ -1,5 +1,5 @@
 """
-Redis Cache Module for HO RAG Backend
+Redis Cache Module for NEXUS Backend
 ======================================
 Provides:
 - Parent document caching (write-through cache)

@@ -1,0 +1,142 @@
+# =============================================================================
+# NEXUS RAG - Production Docker Compose
+# =============================================================================
+# One-command deployment: docker-compose -f docker-compose.prod.yml up -d
+#
+# Services:
+#   - frontend:  Next.js UI (port 3000)
+#   - backend:   FastAPI + GPU LLM (port 8000)
+#   - qdrant:    Vector database (port 6333)
+#   - redis:     Cache + Sessions (port 6379)
+#   - postgres:  Parent document storage (port 5432)
+#
+# GPU Support: Requires NVIDIA Container Toolkit
+#   Install: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Frontend - Next.js
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend-new
+      dockerfile: Dockerfile
+    container_name: nexus-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - nexus-network
+
+  # ---------------------------------------------------------------------------
+  # Backend - FastAPI + Qwen LLM (GPU)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nexus-backend
+    ports:
+      - "8000:8000"
+      - "6006:6006" # Phoenix observability dashboard
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - LLM_MODEL_PATH=/app/SLM/Qwen2.5-3B-Instruct/Qwen2.5-3B-Instruct-Q4_K_M.gguf
+      - CONTEXT_WINDOW=4096
+      - N_GPU_LAYERS=-1
+    volumes:
+      - ./backend/SLM:/app/SLM:ro # Mount LLM model files (read-only)
+      - backend-data:/app/data
+      - backend-indexes:/app/indexes
+    depends_on:
+      - qdrant
+      - redis
+      - postgres
+    restart: unless-stopped
+    networks:
+      - nexus-network
+    # GPU Support - uncomment if you have NVIDIA GPU
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  # ---------------------------------------------------------------------------
+  # Qdrant - Vector Database
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: nexus-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    restart: unless-stopped
+    networks:
+      - nexus-network
+
+  # ---------------------------------------------------------------------------
+  # Redis - Cache & Session Storage
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:alpine
+    container_name: nexus-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - nexus-network
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL - Parent Document Storage
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: nexus-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=nexus
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-nexus_secure_password}
+      - POSTGRES_DB=nexus_rag
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - nexus-network
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  nexus-network:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  qdrant-data:
+  redis-data:
+  postgres-data:
+  backend-data:
+  backend-indexes:

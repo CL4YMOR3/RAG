@@ -13,7 +13,27 @@ import re
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="HO RAG System")
+# =============================================================================
+# ARIZE PHOENIX - LLM OBSERVABILITY
+# =============================================================================
+# Phoenix provides tracing and observability for LLM applications
+# Dashboard available at: http://localhost:6006
+import phoenix as px
+from phoenix.otel import register
+
+# Launch Phoenix in the background
+phoenix_session = px.launch_app()
+logger.info(f"🔥 Phoenix tracing enabled! Dashboard: {phoenix_session.url}")
+
+# Register Phoenix as the trace provider for OpenTelemetry
+tracer_provider = register(project_name="NEXUS-RAG")
+
+# Instrument LlamaIndex for automatic tracing
+from openinference.instrumentation.llama_index import LlamaIndexInstrumentor
+LlamaIndexInstrumentor().instrument(tracer_provider=tracer_provider)
+logger.info("✅ LlamaIndex instrumented for Phoenix tracing")
+
+app = FastAPI(title="NEXUS RAG System")
 
 # --- Supported File Extensions ---
 SUPPORTED_EXTENSIONS = {

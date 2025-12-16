@@ -2,16 +2,19 @@
 RAGAS EVALUATION REPORT
 ============================================================
 
-Team: Engineering
+Team: engineering
+Evaluator: Mistral AI (mistral-large-latest)
 Questions Evaluated: 10
 
 ------------------------------------------------------------
 METRICS
 ------------------------------------------------------------
-Faithfulness:       N/A (evaluation failed)
+Faithfulness:       0.466
+  → Measures if answers only contain info from documents
+  → Higher = less hallucination
 
-Answer Relevancy:   N/A (evaluation failed)
-
-Error: 'EvaluationResult' object has no attribute 'get'
+Answer Relevancy:   0.795
+  → Measures if answers address the user's question
+  → Higher = more relevant answers
 
 ============================================================

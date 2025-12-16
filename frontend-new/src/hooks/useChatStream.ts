@@ -20,6 +20,8 @@ interface UseChatStreamReturn {
 export function useChatStream(team = DEFAULT_TEAM): UseChatStreamReturn {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    // Generate unique session ID per browser session (persists for tab lifetime)
+    const [sessionId] = useState(() => `session-${crypto.randomUUID()}`);
 
     const sendMessage = useCallback(
         async (query: string) => {
@@ -40,7 +42,7 @@ export function useChatStream(team = DEFAULT_TEAM): UseChatStreamReturn {
                 const response = await streamQuery({
                     query,
                     team,
-                    sessionId: 'demo-session',
+                    sessionId,
                 });
 
                 if (!response.body) {
