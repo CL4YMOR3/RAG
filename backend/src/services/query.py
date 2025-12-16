@@ -36,13 +36,16 @@ from qdrant_client.models import (
 # Core Imports
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_cpp import LlamaGrammar
 
 # INTERNAL IMPORTS
 from src.core.config import get_settings
-from src.services.llm import LLMService  # <--- NEW GPU BRIDGE
+from src.core.grammar import FLEXIBLE_CITATION_GRAMMAR
+from src.services.llm import LLMService
 from src.services.ingestion import get_ingestion_service
 from src.services.router import SemanticRouter
 from src.services.guardrails import PromptGuardrails, validate_input
+from src.services.citation_processor import ensure_citations
 from src.db.redis_cache import get_session_store
 
 logger = logging.getLogger(__name__)
@@ -97,21 +100,22 @@ Question: {question}
 
 Hypothetical Answer:"""
 
-CITATION_SYSTEM_PROMPT = """You are NEXUS, a precise document assistant. Answer questions using ONLY the Context below.
+CITATION_SYSTEM_PROMPT = """You are NEXUS, a document assistant. Your task: answer questions using ONLY the documents below.
 
-CRITICAL RULES:
-1. Answer the question directly in your first sentence.
-2. Use ONLY information that appears in the Context. Never add outside knowledge.
-3. When possible, QUOTE exact text from the documents.
-4. Cite every claim: [Source: filename]
-5. If you cannot find the answer in the Context, say: "This information is not in the provided documents."
+=== RULES ===
+1. Every sentence MUST end with a citation: [Source: filename]
+2. Only use facts from the documents below
+3. If not found, say: "Not in documents."
 
-FORBIDDEN:
-- Do NOT infer, assume, or expand beyond what the documents say.
-- Do NOT add helpful context from your training data.
+=== EXAMPLE ===
+Question: What is the server OS?
+Answer: According to the audit, the server runs Windows Server 2008 [Source: audit.docx]. This is an end-of-life operating system [Source: audit.docx].
 
-Context:
-{context}"""
+=== DOCUMENTS ===
+{context}
+
+=== YOUR ANSWER ===
+According to the documents,"""
 
 
 # =============================================================================
@@ -395,9 +399,14 @@ class HybridQueryService:
     # STEP E: GENERATION WITH CITATIONS
     # =========================================================================
     
-    def _generate_answer(self, question: str, context: str) -> str:
+    def _generate_answer(self, question: str, context: str, use_grammar: bool = False) -> str:
         """
-        Generate answer using Qwen with citation enforcement.
+        Generate answer using Qwen with citation enforcement and optional grammar constraints.
+        
+        Args:
+            question: The user's question
+            context: Formatted context from documents
+            use_grammar: Whether to use GBNF grammar for strict structure (default: False)
         """
         system_prompt = CITATION_SYSTEM_PROMPT.format(context=context)
         
@@ -406,14 +415,25 @@ class HybridQueryService:
             ChatMessage(role=MessageRole.USER, content=question)
         ]
         
-        response = self.llm.chat(messages)
+        # Build grammar if enabled
+        grammar = None
+        if use_grammar:
+            try:
+                grammar = LlamaGrammar.from_string(FLEXIBLE_CITATION_GRAMMAR)
+                logger.info("Using grammar-constrained generation")
+            except Exception as e:
+                logger.warning(f"Failed to load grammar, using unconstrained generation: {e}")
+        
+        response = self.llm.chat(messages, grammar=grammar)
         answer = str(response.message.content).strip()
         
         return answer
     
-    async def _generate_answer_stream(self, question: str, context: str) -> AsyncGenerator[str, None]:
+    async def _generate_answer_stream(self, question: str, context: str, use_grammar: bool = False) -> AsyncGenerator[str, None]:
         """
-        Stream answer generation using Qwen.
+        Stream answer generation using Qwen with optional grammar constraints.
+        
+        Note: Grammar-constrained streaming may have slightly higher latency.
         """
         system_prompt = CITATION_SYSTEM_PROMPT.format(context=context)
         
@@ -422,7 +442,16 @@ class HybridQueryService:
             ChatMessage(role=MessageRole.USER, content=question)
         ]
         
-        response = self.llm.stream_chat(messages)
+        # Build grammar if enabled
+        grammar = None
+        if use_grammar:
+            try:
+                grammar = LlamaGrammar.from_string(FLEXIBLE_CITATION_GRAMMAR)
+                logger.info("Using grammar-constrained streaming")
+            except Exception as e:
+                logger.warning(f"Failed to load grammar for streaming: {e}")
+        
+        response = self.llm.stream_chat(messages, grammar=grammar)
         
         for token in response:
             yield token.delta
@@ -517,6 +546,9 @@ class HybridQueryService:
             for doc in reranked_docs
         ]
         
+        # Post-process to ensure all sentences have citations
+        answer = ensure_citations(answer, provenance)
+        
         return {
             "answer": answer,
             "provenance": provenance
@@ -572,7 +604,8 @@ class HybridQueryService:
         context = self._format_context(reranked_docs)
         
         full_response = ""
-        async for token in self._generate_answer_stream(standalone_question, context):
+        # Note: Grammar disabled - CoT prompt structure is sufficient
+        async for token in self._generate_answer_stream(standalone_question, context, use_grammar=False):
             full_response += token
             yield token
         
