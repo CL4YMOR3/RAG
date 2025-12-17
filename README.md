@@ -13,6 +13,28 @@ It combines a high-performance **Hybrid Search** pipeline (Dense + Sparse) with 
 
 ---
 
+## 🛠 Tech Stack
+
+### Frontend (Client)
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Server Actions)
+- **Language**: TypeScript 5+
+- **Styling**: **Tailwind CSS v4**, Custom Glassmorphism System
+- **State**: React Hooks, Context API
+
+### Backend (Server)
+- **Core**: Python 3.11+, [FastAPI](https://fastapi.tiangolo.com/)
+- **Orchestration**: LlamaIndex / LangChain
+- **Vector Database**: **Qdrant** (Containerized)
+- **Database**: **PostgreSQL** (via Neon Serverless)
+- **ORM**: **Prisma** (Multi-tenant Schema)
+- **Caching & Rate Limiting**: **Upstash Redis**
+
+### Infrastructure & Security
+- **Authentication**: **NextAuth.js v5** (Google OAuth 2.0, JWT Strategy)
+- **Deployment**: Docker Compose (Local), Vercel (Frontend), Railway/AWS (Backend)
+
+---
+
 ## ✨ Features
 
 ### Core RAG Capabilities
@@ -37,6 +59,8 @@ It combines a high-performance **Hybrid Search** pipeline (Dense + Sparse) with 
 | **Admin Console** | Dedicated dashboard (`/admin`) for User management, Team creation, and Analytics |
 | **Smart Onboarding** | Multi-step wizard with "Magic Auto-Join" based on email domain (`@jwtl.in`) |
 | **Audit Logging** | Comprehensive tracking of all critical actions (Signups, Data Access, Settings) |
+| **Rate Limiting** | Token-bucket limiting using **Upstash Redis** to prevent abuse (50 req/hour) |
+| **API Keys** | Scoped API key management for programmatic access (`sk_...`) |
 | **Mobile-First UX** | Fully responsive design with swipeable drawers, `100dvh` viewport fixes, and touch targets |
 | **Real-Time Presence** | Live "online users" indicators per team (Heartbeat mechanism) |
 
