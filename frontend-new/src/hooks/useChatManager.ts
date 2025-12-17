@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { Message, Citation } from '@/types';
 import { streamQuery } from '@/lib/api/chat';
+import { UserContext } from '@/lib/api/client';
 import { generateId } from '@/lib/utils';
 import { DEFAULT_TEAM, API_BASE_URL } from '@/lib/constants';
 
@@ -36,11 +37,17 @@ const STORAGE_KEY = 'nexus-chat-sessions';
 
 /**
  * Hook for managing multiple chat sessions with Redis persistence.
+ * @param team - The team slug to query
+ * @param userContext - Optional user context for auth headers
  */
-export function useChatManager(team: string = DEFAULT_TEAM): UseChatManagerReturn {
+export function useChatManager(
+    team: string = DEFAULT_TEAM,
+    userContext?: UserContext
+): UseChatManagerReturn {
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // Load sessions from localStorage on mount
     useEffect(() => {
@@ -66,6 +73,7 @@ export function useChatManager(team: string = DEFAULT_TEAM): UseChatManagerRetur
                 console.error('Failed to parse stored sessions:', e);
             }
         }
+        setIsInitialized(true);
     }, []);
 
     // Save sessions to localStorage whenever they change
@@ -81,6 +89,18 @@ export function useChatManager(team: string = DEFAULT_TEAM): UseChatManagerRetur
 
     // Create a new chat session
     const createNewChat = useCallback(() => {
+        // Check if the most recent session is already an empty "New Chat"
+        // If so, just switch to it instead of creating a duplicate
+        if (sessions.length > 0) {
+            const firstSession = sessions[0];
+            const isFirstSessionEmpty = firstSession.messages.length === 0;
+            // Also check title to be sure, though checking messages might be enough
+            if (isFirstSessionEmpty) {
+                setCurrentSessionId(firstSession.id);
+                return;
+            }
+        }
+
         const newSession: ChatSession = {
             id: `session-${crypto.randomUUID()}`,
             title: 'New Chat',
@@ -90,7 +110,7 @@ export function useChatManager(team: string = DEFAULT_TEAM): UseChatManagerRetur
         };
         setSessions(prev => [newSession, ...prev]);
         setCurrentSessionId(newSession.id);
-    }, [team]);
+    }, [team, sessions]);
 
     // Select an existing chat
     const selectChat = useCallback((sessionId: string) => {
@@ -173,6 +193,7 @@ export function useChatManager(team: string = DEFAULT_TEAM): UseChatManagerRetur
                 query,
                 team,
                 sessionId: currentSessionId,
+                userContext,
             });
 
             if (!response.body) {
@@ -270,10 +291,12 @@ export function useChatManager(team: string = DEFAULT_TEAM): UseChatManagerRetur
 
     // Create initial session if none exists
     useEffect(() => {
+        if (!isInitialized) return;
+
         if (sessions.length === 0 && !currentSessionId) {
             createNewChat();
         }
-    }, [sessions.length, currentSessionId, createNewChat]);
+    }, [sessions.length, currentSessionId, createNewChat, isInitialized]);
 
     return {
         currentSession,

@@ -1,8 +1,9 @@
-from fastapi import FastAPI, UploadFile, Form, Query, HTTPException
+from fastapi import FastAPI, UploadFile, Form, Query, HTTPException, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
 from pathlib import Path
 from src.services.ingestion import IngestionService
 from src.services.query import QueryService
+from src.services.auth import get_user_context_dependency, UserContext, log_request
 from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 import json
@@ -171,7 +172,8 @@ query_service = QueryService()
 async def ingest_file(
     file: UploadFile, 
     team: str = Form(...),
-    chunking_strategy: str = Form("window", description="Strategy: 'window' or 'semantic'")
+    chunking_strategy: str = Form("window", description="Strategy: 'window' or 'semantic'"),
+    user: UserContext = Depends(get_user_context_dependency)
 ):
     """
     Upload a document and ingest it into the Qdrant vector database.
@@ -194,6 +196,8 @@ async def ingest_file(
             team=team,
             chunking_strategy=chunking_strategy
         )
+        # Log the action
+        log_request(user, "INGEST", "document", {"filename": file.filename, "team": team})
         return {"status": "success", "message": f"Successfully ingested {file.filename}", "details": result}
     except Exception as e:
         logger.error(f"Ingestion error: {e}")
@@ -203,7 +207,12 @@ async def ingest_file(
 
 
 @app.post("/query/")
-async def query_team(query: str = Form(...), team: str = Form(...), session_id: str = Form(None)):
+async def query_team(
+    query: str = Form(...), 
+    team: str = Form(...), 
+    session_id: str = Form(None),
+    user: UserContext = Depends(get_user_context_dependency)
+):
     """Query a specific team index and return answer + provenance."""
     try:
         # Generate a temporary session ID if not provided (stateless fallback)
@@ -223,6 +232,8 @@ async def query_team(query: str = Form(...), team: str = Form(...), session_id: 
             return obj
 
         clean_result = convert(result)
+        # Log the query
+        log_request(user, "QUERY", "document", {"team": team, "query": query[:100]})
         return clean_result
 
     except Exception as e:
@@ -230,7 +241,12 @@ async def query_team(query: str = Form(...), team: str = Form(...), session_id: 
         return classify_and_respond_to_error(e, context="querying the knowledge base")
 
 @app.post("/query/stream")
-async def query_team_stream(query: str = Form(...), team: str = Form(...), session_id: str = Form(None)):
+async def query_team_stream(
+    query: str = Form(...), 
+    team: str = Form(...), 
+    session_id: str = Form(None),
+    user: UserContext = Depends(get_user_context_dependency)
+):
     """Query a team index and stream the answer token by token."""
     try:
         if not session_id:

@@ -1,4 +1,4 @@
-import { apiPost } from './client';
+import { apiPost, UserContext } from './client';
 
 /**
  * Parameters for streaming query endpoint.
@@ -7,6 +7,7 @@ export interface StreamQueryParams {
     query: string;
     team: string;
     sessionId?: string;
+    userContext?: UserContext;
 }
 
 /**
@@ -21,7 +22,10 @@ export async function streamQuery(params: StreamQueryParams): Promise<Response> 
         formData.append('session_id', params.sessionId);
     }
 
-    return apiPost('/query/stream', formData, { stream: true }) as Promise<Response>;
+    return apiPost('/query/stream', formData, {
+        stream: true,
+        userContext: params.userContext
+    }) as Promise<Response>;
 }
 
 /**
@@ -45,5 +49,8 @@ export async function queryTeam(params: StreamQueryParams): Promise<QueryRespons
         formData.append('session_id', params.sessionId);
     }
 
-    return apiPost<QueryResponse>('/query/', formData) as Promise<QueryResponse>;
+    return apiPost<QueryResponse>('/query/', formData, {
+        userContext: params.userContext
+    }) as Promise<QueryResponse>;
 }
+
