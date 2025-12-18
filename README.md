@@ -5,7 +5,6 @@
 
 <div align="center">
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
 ![Next.js](https://img.shields.io/badge/Next.js-16%2B-black)
 ![Qdrant](https://img.shields.io/badge/Vector%20DB-Qdrant-red)
