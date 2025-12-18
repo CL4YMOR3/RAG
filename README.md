@@ -255,10 +255,5 @@ User Query → SemanticRouter → (Chat / RAG) → HyDE → Hybrid Search (Qdran
 
 ---
 
-## 🤝 Community & Contributing
-
-We welcome contributions! Please check our [Contributing Guidelines](CONTRIBUTING.md) for details on how to get started.
 
 ### License
-This project is licensed under the [MIT License](LICENSE).
-
