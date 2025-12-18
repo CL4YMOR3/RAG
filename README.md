@@ -79,7 +79,29 @@ It combines a high-performance **Hybrid Search** pipeline (Dense + Sparse) with 
 
 ## 🏗️ Architecture
 
-![System Architecture](https://mermaid.ink/img/pako:eNp1ks1OwzAQhF9l5XMt8QEcCiqVACoXToAI5GKTxCq2sR3_Cqrq3bGToC0H197Z2flmPN5QKiVBKbT1tLa40WLC86fWGi949A4j8Ag-Q_Y4g0-odO1R1yN4g5NWi1JvHh-fQY8_3d_Ah_0X9B79wXNIDw8gSjQ4wBq9Q2c8-t2K3cI4wR6cxl08g8W7nJbQyX5aY80iF6OQn4-VvK03Wv_oFSuW_GzR4QY1LsgM6lJ51E4h70yI22w55I1cT0qDsk5wV7Xk5Z1UokY5M_c0aYt7U4g5F-xalJ40dG1NjeQW2bK2e8O1sVJu-4_sXJa7PZ_P60y8O5eJ5i6jC92jX80tV9vJ_x37kZpS4R9y4c1W1kL4K6hE29BfKFW5mR6QhU_N9E9jL4l8cvoB8f219Q)
+```mermaid
+graph TD
+    User[User] -->|HTTPS| Frontend["Next.js 16 Frontend"]
+    Frontend -->|NextAuth| Auth["Google OAuth 2.0"]
+    Frontend -->|API Request| Backend["FastAPI Backend"]
+    
+    subgraph "Backend Services"
+        Backend -->|Auth Check| API_Secret["Internal API Secret"]
+        Backend -->|Route| Router{Semantic Router}
+        Router -->|Chat| LLM["Qwen 2.5 3B (GPU)"]
+        Router -->|RAG| HybridParams["Contextualize + HyDE"]
+        
+        HybridParams -->|Search| Qdrant[(Qdrant Vector DB)]
+        Qdrant -->|Retrieve| Reranker["FlashRank (CPU)"]
+        Reranker -->|Context| LLM
+    end
+    
+    subgraph "Data Layer"
+        Qdrant <-->|Vectors| Ingestion["Ingestion Service"]
+        Frontend -->|Session| Redis[(Redis Cache)]
+        Backend -->|Metadata| PG[(PostgreSQL)]
+    end
+```
 
 ---
 
