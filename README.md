@@ -175,16 +175,17 @@ NEXUS RAG/
 *   **Protections**: Prompt Injection, Jailbreaking, Harmful Content, Output Filtering.
 *   **Identity**: Enforces consistent responses to "who are you?".
 
-### 6. Enterprise API Endpoints (`api.py`)
+### 6. Enterprise API Endpoints
+
 | Method | Endpoint | Description |
-|:---|:---|:---|
-| POST | `/ingest/` | Upload and index documents |
-| POST | `/query/` | Query with RAG (non-streaming) |
-| POST | `/query/stream` | Query with streaming response |
-| GET | `/teams/` | List all teams/collections |
-| DELETE | `/teams/{team}` | Delete team collection & wipe vectors |
-| POST | `/admin/teams` | [NEW] Create Team with Auto-Admin |
-| GET | `/admin/users` | [NEW] List/Manage Users |
+| :--- | :--- | :--- |
+| `POST` | `/ingest/` | Upload and index documents |
+| `POST` | `/query/` | Query with RAG (non-streaming) |
+| `POST` | `/query/stream` | Query with streaming response |
+| `GET` | `/teams/` | List all teams/collections |
+| `DELETE` | `/teams/{team}` | Delete team collection & wipe vectors |
+| `POST` | `/admin/teams` | **[NEW]** Create Team with Auto-Admin |
+| `GET` | `/admin/users` | **[NEW]** List/Manage Users |
 
 ### 7. RAGAS Evaluation
 *   **Metrics**: Faithfulness (0.64), Answer Relevancy (0.80)
