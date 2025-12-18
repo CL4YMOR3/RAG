@@ -3,6 +3,18 @@
 > **Silicon Valley Standard** AI-Powered Knowledge Platform.
 > Secure. Multi-Tenant. Scalable. Hybrid RAG.
 
+<div align="center">
+
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
+![Next.js](https://img.shields.io/badge/Next.js-16%2B-black)
+![Qdrant](https://img.shields.io/badge/Vector%20DB-Qdrant-red)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fnexus%2Fnexus-rag)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/nexus-rag)
+
+</div>
+
 ![Nexus Enterprise](Nexus%20Logo.png)
 
 ## 🚀 Overview
@@ -191,29 +203,19 @@ NEXUS RAG/
 
 ### 1. Environment Setup
 
-**Frontend (`frontend-new/.env.local`)**:
-```env
-# Auth
-AUTH_SECRET="your-auth-secret"
-GOOGLE_CLIENT_ID="your-google-id"
-GOOGLE_CLIENT_SECRET="your-google-secret"
+Copy the example environment files to get started quickly:
 
-# Backend Connection
-NEXT_PUBLIC_API_BASE_URL="http://localhost:8000"
-NEXT_PUBLIC_API_SECRET="your-internal-secret"
-
-# Database
-DATABASE_URL="postgres://..."
+**Frontend**:
+```bash
+cp frontend-new/.env.example frontend-new/.env.local
 ```
+Edit `.env.local` to add your keys (Google OAuth, etc.).
 
-**Backend (`backend/.env`)**:
-```env
-DATABASE_URL="postgres://..."
-QDRANT_HOST=localhost
-REDIS_URL=redis://localhost:6379
-API_SECRET="your-internal-secret" # Must match NEXT_PUBLIC_API_SECRET
-LLM_MODEL_PATH="SLM/Qwen2.5..."
+**Backend**:
+```bash
+cp backend/.env.example backend/.env
 ```
+Edit `.env` to add your database and LLM paths.
 
 ### 2. Installation
 
@@ -251,4 +253,13 @@ pip install -r requirements.txt
 
 **Data Flow**:
 User Query → SemanticRouter → (Chat / RAG) → HyDE → Hybrid Search (Qdrant) → Rerank (FlashRank) → LLM (Qwen) → Stream.
+
+---
+
+## 🤝 Community & Contributing
+
+We welcome contributions! Please check our [Contributing Guidelines](CONTRIBUTING.md) for details on how to get started.
+
+### License
+This project is licensed under the [MIT License](LICENSE).
 
