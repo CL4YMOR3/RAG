@@ -50,17 +50,15 @@ It combines a high-performance **Hybrid Search** pipeline (Dense + Sparse) with 
 
 ### Core RAG Capabilities
 | Feature | Description |
-|:---|:---|
-| **Hybrid Search** | Dense (BGE-Small) + Sparse (BM42) vectors for semantic + keyword matching |
-| **HyDE** | Hypothetical Document Embeddings for improved retrieval |
-| **Parent-Child Indexing** | Search on small chunks, retrieve full context |
-| **FlashRank Reranking** | CPU-optimized reranking for precision |
-| **Semantic Router** | Cosine similarity-based chat vs RAG classification |
-| **Inline Citations** | `[Source: file.pdf]` format in responses |
-| **Multi-Format Support** | PDF, DOCX, PPTX, XLSX, TXT, HTML, EPUB, RTF, CSV, JSON |
-| **VRAM Protection** | Embeddings on CPU, only LLM on GPU (Optimized for 4GB VRAM) |
-| **RAGAS Evaluation** | Built-in Faithfulness & Answer Relevancy metrics |
-| **Prompt Guardrails** | Protection against prompt injection, jailbreaking & harmful content |
+| :--- | :--- |
+| **Hybrid Search** | Dense (BGE-Small) + Sparse (BM42) vectors for semantic + keyword matching. |
+| **HyDE** | Hypothetical Document Embeddings to hallucinate an answer for better retrieval. |
+| **Parent-Child Indexing** | Search on small chunks (children), retrieve full context (parents). |
+| **FlashRank Reranking** | CPU-optimized reranking to order results by relevance. |
+| **Semantic Router** | Zero-shot classification to decide if a query needs RAG or just Chat. |
+| **Inline Citations** | Responses include clickable `[Source: file.pdf]` references. |
+| **VRAM Protection** | Embeddings & Reranking run on CPU; only the LLM uses GPU. |
+| **RAGAS Evaluation** | Built-in pipeline to test Faithfulness & Answer Relevancy. |
 
 ### 🛡️ Enterprise Platform Features (New)
 | Feature | Description |
