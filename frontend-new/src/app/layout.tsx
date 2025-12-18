@@ -34,7 +34,7 @@ export default function RootLayout({
         <link rel="preconnect" href="http://localhost:8000" />
       </head>
       <body
-        className={`${inter.variable} bg-void text-txt-primary font-sans antialiased h-screen overflow-hidden`}
+        className={`${inter.variable} text-txt-primary font-sans antialiased h-screen overflow-hidden`}
       >
         <AuthProvider>{children}</AuthProvider>
       </body>

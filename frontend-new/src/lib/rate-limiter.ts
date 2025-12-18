@@ -13,10 +13,10 @@ const MAX_QUERIES_PER_WINDOW = 50;
 // Redis client (Upstash-compatible)
 let redisClient: {
     incr: (key: string) => Promise<number>;
-    expire: (key: string, seconds: number) => Promise<void>;
+    expire: (key: string, seconds: number) => Promise<number | void>;
     get: (key: string) => Promise<string | null>;
-    set: (key: string, value: string, options?: { ex?: number }) => Promise<void>;
-    del: (key: string) => Promise<void>;
+    set: (key: string, value: any, options?: any) => Promise<any>;
+    del: (key: string) => Promise<any>;
 } | null = null;
 
 // Initialize Redis if environment variables are present

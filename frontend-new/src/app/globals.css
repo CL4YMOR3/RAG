@@ -56,16 +56,43 @@
 
   body {
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 50, 200, 0.15) 0%, transparent 50%),
-      radial-gradient(ellipse 60% 40% at 80% 50%, rgba(100, 40, 180, 0.1) 0%, transparent 40%),
-      radial-gradient(ellipse 50% 30% at 20% 80%, rgba(140, 60, 220, 0.08) 0%, transparent 35%),
-      linear-gradient(180deg, #030014 0%, #0a0520 50%, #050218 100%);
+      radial-gradient(circle at 90% 20%, rgba(139, 92, 246, 0.25) 0%, transparent 60%),
+      radial-gradient(circle at 85% 70%, rgba(168, 85, 247, 0.18) 0%, transparent 50%),
+      #030014;
     background-attachment: fixed;
     color: var(--color-txt-primary);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     min-height: 100dvh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+      radial-gradient(circle at 100% 50%, rgba(168, 85, 247, 0.08) 0%, transparent 80%);
+    pointer-events: none;
+    z-index: -1;
+    animation: atmospheric-pulse 12s ease-in-out infinite alternate;
+  }
+
+  @keyframes atmospheric-pulse {
+    0% {
+      opacity: 0.3;
+      transform: scale(1) translateX(0);
+    }
+
+    100% {
+      opacity: 1;
+      transform: scale(1.15) translateX(-5%);
+    }
   }
 
   :focus-visible {
